@@ -9,26 +9,39 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - animbox-network
 
   backend:
-    build: ./backend
+    image: ${DOCKER_USERNAME}/animbox-backend:latest
     container_name: animbox_backend
     environment:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_NAME: ${DB_NAME}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://animbox_db:5432/${DB_NAME}
     depends_on:
       - postgres
     restart: unless-stopped
+    networks:
+      - animbox-network
+      - transmigo-network
 
   frontend:
-    build: ./frontend
+    image: ${DOCKER_USERNAME}/animbox-frontend:latest
     container_name: animbox_frontend
-    ports:
-      - "80:80"
     depends_on:
       - backend
     restart: unless-stopped
+    networks:
+      - animbox-network
+      - transmigo-network
+
+networks:
+  animbox-network:
+    driver: bridge
+  transmigo-network:
+    external: true
+    name: transmigo-network
 
 volumes:
   postgres_data:
