@@ -1,31 +1,33 @@
 import { create } from 'zustand'
 
 interface User {
-  id: number
   email: string
-  role: string
 }
 
 interface AuthState {
   user: User | null
   token: string | null
+  refreshToken: string | null
   isAuthenticated: boolean
-  login: (user: User, token: string) => void
+  login: (user: User, token: string, refreshToken: string) => void
   logout: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
 
-  login: (user, token) => {
+  login: (user, token, refreshToken) => {
     sessionStorage.setItem('access_token', token)
-    set({ user, token, isAuthenticated: true })
+    sessionStorage.setItem('refresh_token', refreshToken)
+    set({ user, token, refreshToken, isAuthenticated: true })
   },
 
   logout: () => {
     sessionStorage.removeItem('access_token')
-    set({ user: null, token: null, isAuthenticated: false })
+    sessionStorage.removeItem('refresh_token')
+    set({ user: null, token: null, refreshToken: null, isAuthenticated: false })
   },
 }))
