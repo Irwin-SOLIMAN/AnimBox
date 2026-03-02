@@ -44,12 +44,21 @@ const GamesPage = () => {
               <p className="mb-6 flex-1 text-sm text-gray-500">{game.description}</p>
             )}
 
-            <Button
-              className="w-full"
-              onClick={() => navigate(`/games/${toRoute(game.code)}/questions`)}
-            >
-              Gérer les questions
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => navigate(`/games/${toRoute(game.code)}/questions`)}
+              >
+                Gérer les questions
+              </Button>
+              <Button
+                className="w-full"
+                onClick={() => navigate(`/games/${toRoute(game.code)}/game-sets`)}
+              >
+                Gérer les parties
+              </Button>
+            </div>
           </div>
         ))}
       </div>
