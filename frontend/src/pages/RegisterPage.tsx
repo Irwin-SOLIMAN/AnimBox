@@ -36,7 +36,7 @@ const RegisterPage = () => {
     try {
       const { accessToken, refreshToken } = await authService.register(email, password)
       login({ email }, accessToken, refreshToken)
-      navigate('/dashboard')
+      navigate('/games')
     } catch {
       setApiError('Erreur lors de la création du compte')
     } finally {

@@ -12,7 +12,7 @@ services:
     networks:
       - animbox-network
 
-  backend:
+  animbox-backend:
     image: ${DOCKER_USERNAME}/animbox-backend:latest
     container_name: animbox_backend
     environment:
@@ -26,11 +26,11 @@ services:
       - animbox-network
       - transmigo-network
 
-  frontend:
+  animbox-frontend:
     image: ${DOCKER_USERNAME}/animbox-frontend:latest
     container_name: animbox_frontend
     depends_on:
-      - backend
+      - animbox-backend
     restart: unless-stopped
     networks:
       - animbox-network
