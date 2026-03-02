@@ -3,7 +3,8 @@
     "allow": [
       "Bash(docker ps:*)",
       "Bash(docker compose:*)",
-      "Bash(mvn compile)"
+      "Bash(mvn compile)",
+      "Bash(xargs grep -l \"GameSession\")"
     ]
   }
 }
