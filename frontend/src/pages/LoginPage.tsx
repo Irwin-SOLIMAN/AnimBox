@@ -25,7 +25,7 @@ const LoginPage = () => {
         password,
       );
       login({ email }, accessToken, refreshToken);
-      navigate("/dashboard");
+      navigate("/games");
     } catch {
       setError("Email ou mot de passe incorrect");
     } finally {

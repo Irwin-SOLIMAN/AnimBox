@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import GamesPage from './pages/GamesPage'
+import FamilyFeudQuestionsPage from './pages/FamilyFeudQuestionsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -10,9 +12,10 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* Routes protégées — redirige vers /login si non authentifié */}
+      {/* Routes protégées */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<div className="p-8 text-white">Dashboard (à venir)</div>} />
+        <Route path="/games" element={<GamesPage />} />
+        <Route path="/games/family-feud/questions" element={<FamilyFeudQuestionsPage />} />
       </Route>
 
       {/* Fallback */}
