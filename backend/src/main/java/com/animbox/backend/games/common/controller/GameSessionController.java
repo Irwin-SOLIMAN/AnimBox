@@ -2,6 +2,7 @@ package com.animbox.backend.games.common.controller;
 
 import com.animbox.backend.games.common.dto.GameSessionRequest;
 import com.animbox.backend.games.common.dto.GameSessionResponse;
+import com.animbox.backend.games.common.dto.GameStateDTO;
 import com.animbox.backend.games.common.service.GameSessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -55,6 +56,12 @@ public class GameSessionController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(sessionService.finish(id, userDetails.getUsername()));
+    }
+
+    // Appelé à la reconnexion pour récupérer l'état courant avant de s'abonner au WebSocket
+    @GetMapping("/{id}/state")
+    public ResponseEntity<GameStateDTO> getState(@PathVariable Long id) {
+        return ResponseEntity.ok(sessionService.getState(id));
     }
 
     @DeleteMapping("/{id}")

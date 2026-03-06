@@ -2,8 +2,10 @@ package com.animbox.backend.games.common.service;
 
 import com.animbox.backend.auth.model.User;
 import com.animbox.backend.auth.repository.UserRepository;
+import com.animbox.backend.games.common.dto.ActionDTO;
 import com.animbox.backend.games.common.dto.GameSessionRequest;
 import com.animbox.backend.games.common.dto.GameSessionResponse;
+import com.animbox.backend.games.common.dto.GameStateDTO;
 import com.animbox.backend.games.common.model.GameSession;
 import com.animbox.backend.games.common.model.GameSet;
 import com.animbox.backend.games.common.repository.GameSessionRepository;
@@ -69,6 +71,29 @@ public class GameSessionService {
 
     public void delete(Long id, String email) {
         sessionRepository.delete(getOwnedSession(id, email));
+    }
+
+    @Transactional(readOnly = true)
+    public GameStateDTO getState(Long id) {
+        return GameStateDTO.from(
+                sessionRepository.findById(id)
+                        .orElseThrow(() -> new NoSuchElementException("GameSession introuvable : " + id))
+        );
+    }
+
+    public GameStateDTO applyAction(Long id, ActionDTO action) {
+        GameSession session = sessionRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("GameSession introuvable : " + id));
+
+        switch (action.type()) {
+            case START -> session.start();
+            case NEXT_QUESTION -> session.nextQuestion();
+            case REVEAL_ANSWER -> session.revealAnswer(action.answerId());
+            case ADD_SCORE -> session.addScore(action.teamA(), action.points());
+            case FINISH -> session.finish();
+        }
+
+        return GameStateDTO.from(session);
     }
 
     private GameSession getOwnedSession(Long id, String email) {
