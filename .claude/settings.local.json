@@ -5,7 +5,8 @@
       "Bash(docker compose:*)",
       "Bash(mvn compile)",
       "Bash(xargs grep -l \"GameSession\")",
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 16)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 16)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 17)"
     ]
   }
 }
