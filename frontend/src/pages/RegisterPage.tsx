@@ -58,13 +58,31 @@ const RegisterPage = () => {
             error={errors.email}
           />
 
-          <Input
-            label="Mot de passe"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
-          />
+          <div>
+            <Input
+              label="Mot de passe"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={errors.password}
+            />
+            {password.length > 0 && (
+              <ul className="mt-2 flex flex-col gap-1">
+                {[
+                  { ok: password.length >= 8, label: '8 caractères minimum' },
+                  { ok: /[A-Z]/.test(password), label: 'Une majuscule' },
+                  { ok: /[a-z]/.test(password), label: 'Une minuscule' },
+                  { ok: /[0-9]/.test(password), label: 'Un chiffre' },
+                  { ok: /[^A-Za-z0-9]/.test(password), label: 'Un caractère spécial (!@#$...)' },
+                ].map(({ ok, label }) => (
+                  <li key={label} className={`flex items-center gap-2 text-xs ${ok ? 'text-green-600' : 'text-gray-400'}`}>
+                    <span>{ok ? '✓' : '○'}</span>
+                    {label}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
           <Input
             label="Confirmer le mot de passe"

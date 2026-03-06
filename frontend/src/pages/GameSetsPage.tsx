@@ -201,7 +201,7 @@ const GameSetsPage = () => {
         teamAName: teamAName.trim(),
         teamBName: teamBName.trim(),
       })
-      navigate(`/game-sessions/${session.id}/control`)
+      navigate(`/game-sessions/${session.id}/lobby`)
     } catch {
       setLaunchError("Impossible de créer la session")
     } finally {
