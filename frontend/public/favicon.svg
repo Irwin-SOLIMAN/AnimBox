@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Fond arrondi -->
+  <rect width="32" height="32" rx="7" fill="#6C3FC5"/>
+  <!-- Lettre A stylisée -->
+  <text x="16" y="23" font-family="Arial Black, sans-serif" font-size="20" font-weight="900" fill="white" text-anchor="middle">A</text>
+  <!-- Petit point accent -->
+  <circle cx="24" cy="8" r="3" fill="#F4C842"/>
+</svg>
