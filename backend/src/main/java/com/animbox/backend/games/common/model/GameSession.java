@@ -56,6 +56,20 @@ public class GameSession extends BaseEntity {
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;
 
+    // --- État spécifique Famille en Or ---
+
+    // Nombre de fautes pour le tour en cours (reset à chaque question)
+    @Column(nullable = false)
+    private int currentFaults = 0;
+
+    // Quelle équipe joue actuellement (accumule les points du tour)
+    @Column(nullable = false)
+    private boolean teamAPlaying = true;
+
+    // true = l'équipe adverse a une tentative de vol
+    @Column(nullable = false)
+    private boolean stealPhase = false;
+
     public GameSession(GameSet gameSet, User host, String teamAName, String teamBName) {
         this.gameSet = gameSet;
         this.host = host;
@@ -87,5 +101,24 @@ public class GameSession extends BaseEntity {
         } else {
             this.teamBScore += points;
         }
+    }
+
+    // Ajoute une faute ; déclenche le vol à 3 fautes
+    public void addFault() {
+        this.currentFaults++;
+        if (this.currentFaults >= 3) {
+            this.stealPhase = true;
+        }
+    }
+
+    // Remet à zéro l'état du tour (appeler après fin de tour ou vol)
+    public void resetRound() {
+        this.currentFaults = 0;
+        this.stealPhase = false;
+    }
+
+    // Change l'équipe qui joue (face-off, alternance inter-questions)
+    public void switchTeam() {
+        this.teamAPlaying = !this.teamAPlaying;
     }
 }

@@ -22,7 +22,12 @@ public record GameStateDTO(
         int teamAScore,
         int teamBScore,
         Set<Long> revealedAnswerIds,
-        QuestionDTO currentQuestion
+        QuestionDTO currentQuestion,
+        // --- État Famille en Or ---
+        int currentFaults,
+        boolean teamAPlaying,
+        boolean stealPhase,
+        int roundPoints  // total des points révélés sur la question en cours
 ) {
 
     public record QuestionDTO(
@@ -43,12 +48,20 @@ public record GameStateDTO(
         int idx = session.getCurrentQuestionIndex();
 
         QuestionDTO currentQuestion = null;
+        int roundPoints = 0;
+
         if (idx < questions.size()) {
             FamilyFeudQuestion q = questions.get(idx);
             List<AnswerDTO> answers = q.getAnswers().stream()
                     .map(a -> new AnswerDTO(a.getId(), a.getText(), a.getRank(), a.getScore()))
                     .toList();
             currentQuestion = new QuestionDTO(q.getId(), q.getText(), answers);
+
+            // Points accumulés = somme des réponses révélées pour la question courante
+            roundPoints = q.getAnswers().stream()
+                    .filter(a -> session.getRevealedAnswerIds().contains(a.getId()))
+                    .mapToInt(com.animbox.backend.games.familyfeud.model.FamilyFeudAnswer::getScore)
+                    .sum();
         }
 
         return new GameStateDTO(
@@ -61,7 +74,11 @@ public record GameStateDTO(
                 session.getTeamAScore(),
                 session.getTeamBScore(),
                 session.getRevealedAnswerIds(),
-                currentQuestion
+                currentQuestion,
+                session.getCurrentFaults(),
+                session.isTeamAPlaying(),
+                session.isStealPhase(),
+                roundPoints
         );
     }
 }
