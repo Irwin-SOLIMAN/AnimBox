@@ -4,6 +4,7 @@ import RegisterPage from './pages/RegisterPage'
 import GamesPage from './pages/GamesPage'
 import FamilyFeudQuestionsPage from './pages/FamilyFeudQuestionsPage'
 import GameSetsPage from './pages/GameSetsPage'
+import ControlPanelPage from './pages/ControlPanelPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
         <Route path="/games" element={<GamesPage />} />
         <Route path="/games/family-feud/questions" element={<FamilyFeudQuestionsPage />} />
         <Route path="/games/family-feud/game-sets" element={<GameSetsPage />} />
+        <Route path="/game-sessions/:id/control" element={<ControlPanelPage />} />
       </Route>
 
       {/* Fallback */}
