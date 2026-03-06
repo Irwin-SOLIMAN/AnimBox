@@ -31,6 +31,8 @@ jobs:
           context: ./frontend
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/animbox-frontend:latest
+          build-args: |
+            VITE_API_URL=https://api.animbox.fr/api
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1
