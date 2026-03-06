@@ -6,7 +6,10 @@
       "Bash(mvn compile)",
       "Bash(xargs grep -l \"GameSession\")",
       "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 16)",
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 17)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 17)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 18)",
+      "Bash(npm install @stomp/stompjs sockjs-client)",
+      "Bash(npm install -D @types/sockjs-client)"
     ]
   }
 }
