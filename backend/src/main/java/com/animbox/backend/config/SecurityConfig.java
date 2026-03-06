@@ -51,6 +51,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         // Le handshake WebSocket/SockJS est un HTTP GET — doit être autorisé sans token
                         .requestMatchers("/ws/**").permitAll()
+                        // État d'une session — accessible sans token pour l'écran TV public
+                        .requestMatchers("/api/game-sessions/*/state").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
