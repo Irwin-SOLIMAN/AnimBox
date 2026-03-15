@@ -21,10 +21,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
-        // /topic/** : broker interne, le backend y envoie des messages vers les clients abonnés
-        registry.enableSimpleBroker("/topic");
+        // /topic/** : broadcast à tous les abonnés
+        // /queue/** : messages ciblés à un client spécifique
+        registry.enableSimpleBroker("/topic", "/queue");
 
         // /app/** : préfixe pour les messages envoyés par le client vers le backend (@MessageMapping)
         registry.setApplicationDestinationPrefixes("/app");
+
+        // /user/** : préfixe pour les destinations user-specific (convertAndSendToUser)
+        registry.setUserDestinationPrefix("/user");
     }
 }

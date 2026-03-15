@@ -17,6 +17,8 @@ function App() {
       <Route path="/register" element={<RegisterPage />} />
       {/* Display public — pas besoin d'être connecté sur la TV */}
       <Route path="/game-sessions/:id/display" element={<DisplayPage />} />
+      {/* Control public — un seul commandant autorisé à la fois (géré par WebSocket) */}
+      <Route path="/game-sessions/:id/control" element={<ControlPanelPage />} />
 
       {/* Routes protégées */}
       <Route element={<ProtectedRoute />}>
@@ -24,7 +26,6 @@ function App() {
         <Route path="/games/family-feud/questions" element={<FamilyFeudQuestionsPage />} />
         <Route path="/games/family-feud/game-sets" element={<GameSetsPage />} />
         <Route path="/game-sessions/:id/lobby" element={<SessionLobbyPage />} />
-        <Route path="/game-sessions/:id/control" element={<ControlPanelPage />} />
       </Route>
 
       {/* Fallback */}

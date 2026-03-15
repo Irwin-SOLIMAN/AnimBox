@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 21)"
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" issue view 21)",
+      "Bash(ssh ubuntu@51.254.136.208 \"cat /etc/caddy/Caddyfile || cat /home/ubuntu/Caddyfile || find /home/ubuntu -name ''Caddyfile'' 2>/dev/null | head -5\")"
     ]
   }
 }

@@ -10,6 +10,7 @@ interface UseWebSocketOptions<T> {
   topic: string
   onMessage: (data: T) => void
   onError?: (message: string) => void
+  onConnect?: (client: Client) => void
 }
 
 interface UseWebSocketReturn {
@@ -17,7 +18,7 @@ interface UseWebSocketReturn {
   isConnected: boolean
 }
 
-function useWebSocket<T>({ topic, onMessage, onError }: UseWebSocketOptions<T>): UseWebSocketReturn {
+function useWebSocket<T>({ topic, onMessage, onError, onConnect }: UseWebSocketOptions<T>): UseWebSocketReturn {
   const [isConnected, setIsConnected] = useState(false)
   const clientRef = useRef<Client | null>(null)
 
@@ -35,6 +36,7 @@ function useWebSocket<T>({ topic, onMessage, onError }: UseWebSocketOptions<T>):
             onError?.('Erreur de parsing du message WebSocket')
           }
         })
+        onConnect?.(client)
       },
 
       onDisconnect: () => {

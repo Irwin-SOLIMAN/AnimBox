@@ -3,7 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { gameSessionService } from '../services/gameSessionService'
 import type { GameStateDTO, ActionDTO } from '../types/gameSession'
 import useWebSocket from '../hooks/useWebSocket'
-import Button from '../components/ui/Button'
+
+type ControlStatus = 'pending' | 'claimed' | 'taken'
+
+const FF_BG = 'radial-gradient(ellipse at 50% 20%, #1a3570 0%, #080f22 70%)'
 
 const ControlPanelPage = () => {
   const { id } = useParams<{ id: string }>()
@@ -13,8 +16,8 @@ const ControlPanelPage = () => {
   const [state, setState] = useState<GameStateDTO | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [controlStatus, setControlStatus] = useState<ControlStatus>('pending')
 
-  // Charge l'état initial via REST (avant la connexion WebSocket)
   useEffect(() => {
     gameSessionService
       .getState(sessionId)
@@ -23,67 +26,128 @@ const ControlPanelPage = () => {
       .finally(() => setLoading(false))
   }, [sessionId])
 
-  // WebSocket — met à jour l'état à chaque action
   const { send, isConnected } = useWebSocket<GameStateDTO>({
     topic: `/topic/session/${sessionId}`,
     onMessage: setState,
     onError: (msg) => setError(msg),
+    onConnect: (client) => {
+      client.subscribe('/user/queue/control-status', (message) => {
+        const status = JSON.parse(message.body) as { type: string }
+        setControlStatus(status.type === 'CONTROL_CLAIMED' ? 'claimed' : 'taken')
+      })
+      client.publish({
+        destination: `/app/session/${sessionId}/claim-control`,
+        body: JSON.stringify({}),
+      })
+    },
   })
 
+  const isCommander = controlStatus === 'claimed'
+
   const dispatch = (action: ActionDTO) => {
+    if (!isCommander) return
     send(`/app/session/${sessionId}/action`, action)
   }
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-white">Chargement...</div>
-  if (error || !state) return <div className="flex min-h-screen items-center justify-center text-red-400">{error || 'Session introuvable'}</div>
+  if (loading) return (
+    <div className="flex min-h-screen items-center justify-center" style={{ background: FF_BG }}>
+      <p className="text-xl font-bold text-ff-gold animate-pulse">Chargement...</p>
+    </div>
+  )
+
+  if (error || !state) return (
+    <div className="flex min-h-screen items-center justify-center" style={{ background: FF_BG }}>
+      <p className="text-red-400">{error || 'Session introuvable'}</p>
+    </div>
+  )
+
+  if (controlStatus === 'taken') return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center" style={{ background: FF_BG }}>
+      <p className="text-5xl">🚫</p>
+      <p className="text-xl font-black text-ff-gold">Session déjà contrôlée</p>
+      <p className="text-sm text-white/50">Un autre appareil est déjà le commandant de bord de cette session.</p>
+    </div>
+  )
 
   const { currentQuestion, revealedAnswerIds } = state
 
   return (
-    <div className="min-h-screen p-4 pb-8">
+    <div className="min-h-screen p-4 pb-8" style={{ background: FF_BG }}>
+
+      {/* Mini titre */}
+      <div className="mb-3 text-center">
+        <p
+          className="text-lg font-black uppercase tracking-wider text-ff-gold"
+          style={{ textShadow: '0 0 12px rgba(244,185,66,0.4)' }}
+        >
+          Famille en Or
+        </p>
+      </div>
 
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
-        <button onClick={() => navigate('/games')} className="text-sm text-brand-primary hover:underline">
+        <button
+          onClick={() => navigate('/games')}
+          className="text-sm text-white/50 hover:text-white"
+        >
           ← Quitter
         </button>
-        <span className="text-sm font-medium text-brand-light">
+        <span className="text-sm font-medium text-white/60">
           Question {state.currentQuestionIndex + 1} / {state.totalQuestions}
         </span>
-        <span className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} title={isConnected ? 'Connecté' : 'Déconnecté'} />
+        <span
+          className={`h-2.5 w-2.5 rounded-full transition-colors ${isConnected ? 'bg-ff-gold' : 'bg-red-400'}`}
+          title={isConnected ? 'Connecté' : 'Déconnecté'}
+        />
       </div>
 
       {/* Scores */}
       <div className="mb-4 grid grid-cols-2 gap-3">
-        {([['A', state.teamAName, state.teamAScore, state.teamAPlaying], ['B', state.teamBName, state.teamBScore, !state.teamAPlaying]] as const).map(([key, name, score, playing]) => (
-          <div key={key} className={`rounded-2xl p-4 text-center ${playing && state.status === 'IN_PROGRESS' ? 'bg-brand-primary text-white' : 'bg-white text-brand-darkest'}`}>
-            <p className="text-xs font-medium uppercase tracking-wide opacity-70">{playing && state.status === 'IN_PROGRESS' ? '🎯 joue' : '\u00a0'}</p>
-            <p className="truncate font-bold">{name}</p>
-            <p className="text-3xl font-extrabold">{score}</p>
+        {(
+          [
+            ['A', state.teamAName, state.teamAScore, state.teamAPlaying],
+            ['B', state.teamBName, state.teamBScore, !state.teamAPlaying],
+          ] as const
+        ).map(([key, name, score, playing]) => (
+          <div
+            key={key}
+            className={`rounded-2xl border-2 p-4 text-center transition-all duration-300
+              ${playing && state.status === 'IN_PROGRESS'
+                ? 'border-ff-gold bg-ff-card-mid ff-glow'
+                : 'border-white/10 bg-ff-card'
+              }`}
+          >
+            <p className="text-xs font-bold uppercase tracking-wide text-ff-gold/60">
+              {playing && state.status === 'IN_PROGRESS' ? '🎯 joue' : '\u00a0'}
+            </p>
+            <p className="truncate font-bold text-white">{name}</p>
+            <p className={`text-3xl font-extrabold ${playing && state.status === 'IN_PROGRESS' ? 'text-ff-gold' : 'text-white/70'}`}>
+              {score}
+            </p>
           </div>
         ))}
       </div>
 
       {/* Fautes + Points du tour */}
       {state.status === 'IN_PROGRESS' && (
-        <div className="mb-4 flex items-center justify-between rounded-xl bg-white/10 px-4 py-3">
+        <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-ff-card px-4 py-3">
           <div className="flex items-center gap-1">
             {[0, 1, 2].map((i) => (
-              <span key={i} className={`text-xl ${i < state.currentFaults ? 'text-red-400' : 'text-white/20'}`}>✕</span>
+              <span key={i} className={`text-xl ${i < state.currentFaults ? 'text-red-500' : 'text-white/15'}`}>✕</span>
             ))}
-            <span className="ml-2 text-sm text-brand-light">fautes</span>
+            <span className="ml-2 text-sm text-white/40">fautes</span>
           </div>
           <div className="text-right">
-            <span className="text-sm text-brand-light">Tour : </span>
-            <span className="font-bold text-white">{state.roundPoints} pts</span>
+            <span className="text-sm text-white/40">Tour : </span>
+            <span className="font-bold text-ff-gold">{state.roundPoints} pts</span>
           </div>
         </div>
       )}
 
-      {/* Question */}
+      {/* Question + Réponses */}
       {currentQuestion && (
-        <div className="mb-4 rounded-2xl bg-white p-4">
-          <p className="mb-3 text-base font-bold text-brand-darkest">{currentQuestion.text}</p>
+        <div className="mb-4 rounded-2xl border border-white/10 bg-ff-card p-4">
+          <p className="mb-3 text-base font-bold text-white">{currentQuestion.text}</p>
           <div className="flex flex-col gap-2">
             {currentQuestion.answers.map((answer) => {
               const revealed = revealedAnswerIds.includes(answer.id)
@@ -92,7 +156,7 @@ const ControlPanelPage = () => {
               return (
                 <button
                   key={answer.id}
-                  disabled={revealed || (!state.stealPhase && state.status !== 'IN_PROGRESS')}
+                  disabled={revealed || (!state.stealPhase && state.status !== 'IN_PROGRESS') || !isCommander}
                   onClick={() => {
                     if (state.stealPhase) {
                       dispatch({ type: 'STEAL', answerId: answer.id })
@@ -100,17 +164,19 @@ const ControlPanelPage = () => {
                       dispatch({ type: 'REVEAL_ANSWER', answerId: answer.id })
                     }
                   }}
-                  className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-colors
+                  className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-medium transition-all
                     ${revealed
-                      ? 'bg-brand-primary text-white'
+                      ? 'border-ff-gold/40 bg-ff-card-mid text-white'
                       : isStealTarget
-                        ? 'border-2 border-dashed border-orange-400 bg-orange-50 text-orange-700 hover:bg-orange-100'
-                        : 'bg-gray-100 text-gray-500 hover:bg-brand-light hover:text-brand-darkest'
+                        ? 'border-2 border-dashed border-orange-400 bg-orange-900/20 text-orange-300'
+                        : 'border-white/10 bg-[#0d1835] text-white/30 hover:border-white/20 hover:text-white/60'
                     }`}
                 >
-                  <span className="mr-2 font-bold">{answer.rank}.</span>
-                  <span className="flex-1 text-left">{revealed ? answer.text : (isStealTarget ? 'Cliquer pour voler' : '???')}</span>
-                  {revealed && <span className="ml-2 font-bold">{answer.score} pts</span>}
+                  <span className="mr-2 font-bold text-ff-gold/70">{answer.rank}.</span>
+                  <span className="flex-1 text-left">
+                    {revealed ? answer.text : (isStealTarget ? 'Cliquer pour voler' : '???')}
+                  </span>
+                  {revealed && <span className="ml-2 font-bold text-ff-gold">{answer.score} pts</span>}
                 </button>
               )
             })}
@@ -122,47 +188,41 @@ const ControlPanelPage = () => {
       <div className="flex flex-col gap-3">
         {/* WAITING → Démarrer */}
         {state.status === 'WAITING' && (
-          <Button className="w-full py-4 text-lg" onClick={() => dispatch({ type: 'START' })}>
+          <GoldButton onClick={() => dispatch({ type: 'START' })}>
             Démarrer la partie
-          </Button>
+          </GoldButton>
         )}
 
         {/* IN_PROGRESS — phase normale */}
         {state.status === 'IN_PROGRESS' && !state.stealPhase && (
           <>
-            <Button
-              variant="ghost"
-              className="w-full border-2 border-red-400 py-3 text-base text-red-400 hover:bg-red-50"
+            <button
               onClick={() => dispatch({ type: 'FAULT' })}
+              className="w-full rounded-2xl border-2 border-red-500/60 bg-red-900/20 py-3 text-base font-bold text-red-400 transition hover:bg-red-900/40"
             >
               ✕ Faute
-            </Button>
+            </button>
 
             <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="secondary"
-                className="py-3"
-                onClick={() => dispatch({ type: 'END_ROUND', teamA: true })}
-              >
+              <OutlineButton onClick={() => dispatch({ type: 'END_ROUND', teamA: true })}>
                 Manche → {state.teamAName}
-              </Button>
-              <Button
-                variant="secondary"
-                className="py-3"
-                onClick={() => dispatch({ type: 'END_ROUND', teamA: false })}
-              >
+              </OutlineButton>
+              <OutlineButton onClick={() => dispatch({ type: 'END_ROUND', teamA: false })}>
                 Manche → {state.teamBName}
-              </Button>
+              </OutlineButton>
             </div>
 
             {state.currentQuestionIndex < state.totalQuestions - 1 ? (
-              <Button variant="ghost" className="w-full py-3" onClick={() => dispatch({ type: 'NEXT_QUESTION' })}>
+              <OutlineButton onClick={() => dispatch({ type: 'NEXT_QUESTION' })}>
                 Question suivante →
-              </Button>
+              </OutlineButton>
             ) : (
-              <Button variant="ghost" className="w-full py-3 text-red-400" onClick={() => dispatch({ type: 'FINISH' })}>
+              <button
+                onClick={() => dispatch({ type: 'FINISH' })}
+                className="w-full rounded-2xl border border-red-500/40 bg-transparent py-3 font-bold text-red-400 transition hover:bg-red-900/20"
+              >
                 Terminer la partie
-              </Button>
+              </button>
             )}
           </>
         )}
@@ -170,37 +230,57 @@ const ControlPanelPage = () => {
         {/* IN_PROGRESS — phase de vol */}
         {state.status === 'IN_PROGRESS' && state.stealPhase && (
           <>
-            <div className="rounded-xl bg-orange-100 px-4 py-3 text-center text-sm font-medium text-orange-700">
+            <div className="rounded-xl border border-orange-400/30 bg-orange-900/20 px-4 py-3 text-center text-sm font-bold text-orange-300">
               🔥 Phase de vol — {state.teamAPlaying ? state.teamBName : state.teamAName} choisit une réponse
             </div>
-            <Button
-              variant="ghost"
-              className="w-full border-2 border-red-400 py-3 text-red-400"
+            <button
               onClick={() => dispatch({ type: 'STEAL', answerId: -1 })}
+              className="w-full rounded-2xl border-2 border-red-500/60 bg-red-900/20 py-3 font-bold text-red-400 transition hover:bg-red-900/40"
             >
               Réponse incorrecte — {state.teamAPlaying ? state.teamAName : state.teamBName} garde les points
-            </Button>
+            </button>
           </>
         )}
 
         {/* FINISHED */}
         {state.status === 'FINISHED' && (
-          <div className="rounded-2xl bg-white p-6 text-center">
-            <p className="mb-2 text-lg font-bold text-brand-darkest">Partie terminée !</p>
-            <p className="mb-4 text-sm text-gray-500">
+          <div className="rounded-2xl border border-ff-gold/30 bg-ff-card p-6 text-center">
+            <p className="mb-1 text-2xl font-black text-ff-gold">🏆 Partie terminée !</p>
+            <p className="mb-5 text-sm text-white/50">
               {state.teamAScore > state.teamBScore
-                ? `🏆 ${state.teamAName} gagne !`
+                ? `${state.teamAName} gagne !`
                 : state.teamBScore > state.teamAScore
-                  ? `🏆 ${state.teamBName} gagne !`
+                  ? `${state.teamBName} gagne !`
                   : 'Égalité !'}
             </p>
-            <Button className="w-full" onClick={() => navigate('/games')}>
-              Retour à l'accueil
-            </Button>
+            <GoldButton onClick={() => navigate('/games')}>Retour à l'accueil</GoldButton>
           </div>
         )}
       </div>
     </div>
+  )
+}
+
+function GoldButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full rounded-2xl py-4 text-base font-black uppercase tracking-wide text-[#0a1628] transition active:scale-95"
+      style={{ background: 'linear-gradient(180deg, #fdd876 0%, #f4b942 50%, #c4922e 100%)' }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function OutlineButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full rounded-2xl border border-ff-gold/40 bg-ff-card py-3 font-bold text-ff-gold transition hover:bg-ff-card-mid active:scale-95"
+    >
+      {children}
+    </button>
   )
 }
 
