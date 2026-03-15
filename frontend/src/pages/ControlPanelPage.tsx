@@ -31,7 +31,8 @@ const ControlPanelPage = () => {
     onMessage: setState,
     onError: (msg) => setError(msg),
     onConnect: (client) => {
-      client.subscribe('/user/queue/control-status', (message) => {
+      const stompSessionId = client.connectedHeaders?.session ?? ''
+      client.subscribe(`/topic/control-status/${stompSessionId}`, (message) => {
         const status = JSON.parse(message.body) as { type: string }
         setControlStatus(status.type === 'CONTROL_CLAIMED' ? 'claimed' : 'taken')
       })

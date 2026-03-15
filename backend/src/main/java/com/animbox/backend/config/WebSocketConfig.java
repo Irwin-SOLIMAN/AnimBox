@@ -16,7 +16,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         // withSockJS() ajoute un fallback HTTP pour les navigateurs sans WebSocket natif
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .withSockJS();
+                .withSockJS()
+                .setSessionCookieNeeded(false);
     }
 
     @Override
