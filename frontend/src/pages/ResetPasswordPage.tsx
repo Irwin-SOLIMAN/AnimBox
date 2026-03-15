@@ -1,27 +1,30 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { authService } from '../services/authService'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
-import { validateEmail, validatePassword, validateConfirm } from '../utils/validation'
+import { validatePassword, validateConfirm } from '../utils/validation'
 
-const RegisterPage = () => {
-  const [email, setEmail] = useState('')
+const ResetPasswordPage = () => {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  const token = searchParams.get('token') ?? ''
+
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
-  const [errors, setErrors] = useState({ email: '', password: '', confirm: '' })
+  const [errors, setErrors] = useState({ password: '', confirm: '' })
   const [apiError, setApiError] = useState('')
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
 
   const validate = () => {
     const next = {
-      email: validateEmail(email) ?? '',
       password: validatePassword(password) ?? '',
       confirm: validateConfirm(password, confirm) ?? '',
     }
     setErrors(next)
-    return !next.email && !next.password && !next.confirm
+    return !next.password && !next.confirm
   }
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -31,28 +34,38 @@ const RegisterPage = () => {
 
     setLoading(true)
     try {
-      await authService.register(email, password)
+      await authService.resetPassword(token, password)
       setDone(true)
-    } catch {
-      setApiError('Erreur lors de la création du compte')
+      setTimeout(() => navigate('/login'), 2500)
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setApiError(msg ?? 'Lien invalide ou expiré.')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!token) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-md text-center">
+          <p className="mb-3 text-4xl">❌</p>
+          <p className="text-red-500">Lien invalide.</p>
+          <Link to="/login" className="mt-4 block text-sm font-medium text-brand-primary hover:underline">
+            Retour à la connexion
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   if (done) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-md text-center">
-          <p className="mb-3 text-4xl">📧</p>
-          <h1 className="mb-2 text-2xl font-bold text-brand-darkest">Vérifiez votre email</h1>
-          <p className="mb-6 text-sm text-gray-500">
-            Un lien de vérification a été envoyé à <strong>{email}</strong>.<br />
-            Cliquez dessus pour activer votre compte.
-          </p>
-          <Link to="/login" className="text-sm font-medium text-brand-primary hover:underline">
-            Retour à la connexion
-          </Link>
+          <p className="mb-3 text-4xl">✅</p>
+          <h1 className="mb-2 text-2xl font-bold text-brand-darkest">Mot de passe mis à jour !</h1>
+          <p className="text-sm text-gray-500">Redirection vers la connexion...</p>
         </div>
       </div>
     )
@@ -61,20 +74,13 @@ const RegisterPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-md">
-        <h1 className="mb-6 text-2xl font-bold text-brand-darkest">Créer un compte</h1>
+        <h1 className="mb-2 text-2xl font-bold text-brand-darkest">Nouveau mot de passe</h1>
+        <p className="mb-6 text-sm text-gray-500">Choisissez un nouveau mot de passe pour votre compte.</p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            label="Email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            error={errors.email}
-          />
-
           <div>
             <Input
-              label="Mot de passe"
+              label="Nouveau mot de passe"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -109,19 +115,12 @@ const RegisterPage = () => {
           {apiError && <p className="text-sm text-red-500">{apiError}</p>}
 
           <Button type="submit" loading={loading} className="w-full">
-            {loading ? 'Création...' : "S'inscrire"}
+            {loading ? 'Mise à jour...' : 'Changer le mot de passe'}
           </Button>
         </form>
-
-        <p className="mt-4 text-center text-sm text-brand-dark">
-          Déjà un compte ?{' '}
-          <Link to="/login" className="font-medium text-brand-primary hover:underline">
-            Se connecter
-          </Link>
-        </p>
       </div>
     </div>
   )
 }
 
-export default RegisterPage
+export default ResetPasswordPage

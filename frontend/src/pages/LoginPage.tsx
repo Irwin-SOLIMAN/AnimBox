@@ -26,8 +26,13 @@ const LoginPage = () => {
       );
       login({ email }, accessToken, refreshToken);
       navigate("/games");
-    } catch {
-      setError("Email ou mot de passe incorrect");
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status
+      if (status === 403) {
+        setError("Veuillez vérifier votre email avant de vous connecter.")
+      } else {
+        setError("Email ou mot de passe incorrect");
+      }
     } finally {
       setLoading(false);
     }
@@ -62,6 +67,12 @@ const LoginPage = () => {
           <Button type="submit" loading={loading} className="w-full">
             {loading ? "Connexion..." : "Se connecter"}
           </Button>
+
+          <p className="text-right text-sm">
+            <Link to="/forgot-password" className="text-brand-primary hover:underline">
+              Mot de passe oublié ?
+            </Link>
+          </p>
         </form>
 
         <p className="mt-4 text-center text-sm text-brand-dark">
