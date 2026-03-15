@@ -14,7 +14,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -42,10 +41,10 @@ public class GameSessionWebSocketController {
 
     /**
      * Un client tente de prendre le contrôle exclusif d'une session.
-     * Répond en privé avec CONTROL_CLAIMED ou CONTROL_TAKEN.
+     * Répond sur un topic session-specific pour éviter le routing user (pas de Principal).
      *
      * Client envoie vers : /app/session/{sessionId}/claim-control
-     * Réponse privée sur : /user/queue/control-status
+     * Réponse sur : /topic/control-status/{stompSessionId}
      */
     @MessageMapping("/session/{sessionId}/claim-control")
     public void handleClaimControl(@DestinationVariable Long sessionId,
@@ -57,12 +56,7 @@ public class GameSessionWebSocketController {
 
         ControlStatusDTO response = new ControlStatusDTO(claimed ? "CONTROL_CLAIMED" : "CONTROL_TAKEN");
 
-        messagingTemplate.convertAndSendToUser(
-                stompSessionId,
-                "/queue/control-status",
-                response,
-                Map.of(SimpMessageHeaderAccessor.SESSION_ID_HEADER, stompSessionId)
-        );
+        messagingTemplate.convertAndSend("/topic/control-status/" + stompSessionId, response);
     }
 
     /**
