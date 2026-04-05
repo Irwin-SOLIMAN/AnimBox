@@ -42,6 +42,7 @@ export interface GameStateDTO {
 export interface GameSessionResponse {
   id: number
   token: string
+  gameSet: { id: number; name: string }
   status: SessionStatus
   teamAName: string
   teamBName: string
@@ -49,6 +50,7 @@ export interface GameSessionResponse {
   teamBScore: number
   currentQuestionIndex: number
   revealedAnswerIds: number[]
+  createdAt: string
 }
 
 export interface GameSessionRequest {

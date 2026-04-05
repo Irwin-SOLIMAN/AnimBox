@@ -4,6 +4,9 @@ import type { GameSessionResponse, GameSessionRequest, GameStateDTO } from '../t
 const BASE = '/game-sessions'
 
 export const gameSessionService = {
+  findAll: async (): Promise<GameSessionResponse[]> =>
+    (await api.get<GameSessionResponse[]>(BASE)).data,
+
   create: async (data: GameSessionRequest): Promise<GameSessionResponse> =>
     (await api.post<GameSessionResponse>(BASE, data)).data,
 
@@ -15,6 +18,10 @@ export const gameSessionService = {
 
   finish: async (id: number): Promise<GameSessionResponse> =>
     (await api.post<GameSessionResponse>(`${BASE}/${id}/finish`)).data,
+
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`${BASE}/${id}`)
+  },
 
   getState: async (id: number): Promise<GameStateDTO> =>
     (await api.get<GameStateDTO>(`${BASE}/${id}/state`)).data,

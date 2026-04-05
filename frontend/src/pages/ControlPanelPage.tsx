@@ -181,9 +181,9 @@ const ControlPanelPage = () => {
                 >
                   <span className="mr-2 font-bold text-ff-gold/70">{answer.rank}.</span>
                   <span className="flex-1 text-left">
-                    {revealed ? answer.text : (isStealTarget ? 'Cliquer pour voler' : '???')}
+                    {isStealTarget ? 'Cliquer pour voler' : answer.text}
                   </span>
-                  {revealed && <span className="ml-2 font-bold text-ff-gold">{answer.score} pts</span>}
+                  <span className="ml-2 font-bold text-ff-gold">{answer.score} pts</span>
                 </button>
               )
             })}

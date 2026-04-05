@@ -5,6 +5,7 @@ import { gameSessionService } from '../services/gameSessionService'
 import { familyFeudService } from '../services/familyFeudService'
 import { gameTypeService } from '../services/gameTypeService'
 import type { GameSetResponse } from '../types/gameSet'
+import type { GameSessionResponse } from '../types/gameSession'
 import type { FamilyFeudQuestionResponse } from '../types/familyFeud'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -21,11 +22,13 @@ const GameSetsPage = () => {
 
   // --- Données ---
   const [gameSets, setGameSets] = useState<GameSetResponse[]>([])
+  const [activeSessions, setActiveSessions] = useState<GameSessionResponse[]>([])
   const [allQuestions, setAllQuestions] = useState<FamilyFeudQuestionResponse[]>([])
   const [gameTypeId, setGameTypeId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [stopLoadingId, setStopLoadingId] = useState<number | null>(null)
 
   // --- Formulaire create/edit ---
   const [formOpen, setFormOpen] = useState(false)
@@ -52,15 +55,34 @@ const GameSetsPage = () => {
 
   const fetchData = () => {
     setLoading(true)
-    Promise.all([gameSetService.findAll(), familyFeudService.findAll(), gameTypeService.findAll()])
-      .then(([sets, questions, gameTypes]) => {
+    Promise.all([
+      gameSetService.findAll(),
+      familyFeudService.findAll(),
+      gameTypeService.findAll(),
+      gameSessionService.findAll(),
+    ])
+      .then(([sets, questions, gameTypes, sessions]) => {
         setGameSets(sets)
         setAllQuestions(questions)
         const familyFeud = gameTypes.find((gt) => gt.code === 'FAMILY_FEUD')
         setGameTypeId(familyFeud?.id ?? null)
+        setActiveSessions(sessions.filter((s) => s.status !== 'FINISHED'))
       })
       .catch(() => setError('Impossible de charger les données'))
       .finally(() => setLoading(false))
+  }
+
+  const handleStopSession = async (id: number) => {
+    setStopLoadingId(id)
+    try {
+      await gameSessionService.finish(id)
+      setActiveSessions((prev) => prev.filter((s) => s.id !== id))
+      showSuccess('Partie arrêtée')
+    } catch {
+      setError("Impossible d'arrêter la session")
+    } finally {
+      setStopLoadingId(null)
+    }
   }
 
   useEffect(() => {
@@ -233,6 +255,50 @@ const GameSetsPage = () => {
       {/* Feedback */}
       {successMsg && (
         <div className="mb-4 rounded-lg bg-brand-primary px-4 py-3 text-white">{successMsg}</div>
+      )}
+
+      {/* Sessions en cours */}
+      {activeSessions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-lg font-bold text-white">Sessions en cours</h2>
+          <div className="flex flex-col gap-3">
+            {activeSessions.map((session) => (
+              <div key={session.id} className="flex items-center justify-between rounded-2xl bg-white/10 px-5 py-4">
+                <div>
+                  <p className="font-semibold text-white">{session.gameSet.name}</p>
+                  <p className="text-sm text-white/60">
+                    {session.teamAName} {session.teamAScore} — {session.teamBScore} {session.teamBName}
+                  </p>
+                  <span
+                    className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                      session.status === 'IN_PROGRESS'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-yellow-500/20 text-yellow-300'
+                    }`}
+                  >
+                    {session.status === 'IN_PROGRESS' ? 'En cours' : 'En attente'}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="px-3 py-1 text-sm"
+                    onClick={() => navigate(`/game-sessions/${session.token}/control`)}
+                  >
+                    Rejoindre
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="px-3 py-1 text-sm text-red-400 hover:bg-red-500/10"
+                    onClick={() => handleStopSession(session.id)}
+                    loading={stopLoadingId === session.id}
+                  >
+                    Arrêter
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Formulaire create/edit */}
