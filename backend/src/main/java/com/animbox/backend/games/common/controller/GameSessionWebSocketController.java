@@ -6,6 +6,8 @@ import com.animbox.backend.games.common.dto.ControlStatusDTO;
 import com.animbox.backend.games.common.dto.GameStateDTO;
 import com.animbox.backend.games.common.service.GameSessionService;
 import com.animbox.backend.games.familyfeud.service.FamilyFeudGameService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -19,6 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Controller
 public class GameSessionWebSocketController {
+
+    private static final Logger log = LoggerFactory.getLogger(GameSessionWebSocketController.class);
 
     private static final Set<ActionType> FAMILY_FEUD_ACTIONS = Set.of(
             ActionType.FAULT, ActionType.STEAL, ActionType.END_ROUND
@@ -50,11 +54,13 @@ public class GameSessionWebSocketController {
     public void handleClaimControl(@DestinationVariable Long sessionId,
                                    SimpMessageHeaderAccessor headerAccessor) {
         String stompSessionId = headerAccessor.getSessionId();
+        log.info("[claim-control] sessionId={} stompSessionId={}", sessionId, stompSessionId);
 
         String existing = controllers.putIfAbsent(sessionId, stompSessionId);
         boolean claimed = existing == null || existing.equals(stompSessionId);
 
         ControlStatusDTO response = new ControlStatusDTO(claimed ? "CONTROL_CLAIMED" : "CONTROL_TAKEN");
+        log.info("[claim-control] result={} publishing to /topic/control-status/{}", response.type(), stompSessionId);
 
         messagingTemplate.convertAndSend("/topic/control-status/" + stompSessionId, response);
     }
