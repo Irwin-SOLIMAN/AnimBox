@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { gameSessionService } from '../services/gameSessionService'
 import type { GameStateDTO, ActionDTO } from '../types/gameSession'
@@ -17,6 +17,7 @@ const ControlPanelPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [controlStatus, setControlStatus] = useState<ControlStatus>('pending')
+  const clientId = useRef(crypto.randomUUID())
 
   useEffect(() => {
     if (!token) return
@@ -34,16 +35,16 @@ const ControlPanelPage = () => {
     topic: sessionId ? `/topic/session/${sessionId}` : '',
     onMessage: setState,
     onError: (msg) => setError(msg),
-    onConnect: (client, frame) => {
-      const stompSessionId = frame.headers['session'] ?? ''
-      console.log('[WS] CONNECTED frame headers:', frame.headers, '→ stompSessionId:', stompSessionId)
-      client.subscribe(`/topic/control-status/${stompSessionId}`, (message) => {
-        const status = JSON.parse(message.body) as { type: string }
-        setControlStatus(status.type === 'CONTROL_CLAIMED' ? 'claimed' : 'taken')
+    onConnect: (client) => {
+      client.subscribe(`/topic/session/${sessionId}/control-status`, (message) => {
+        const status = JSON.parse(message.body) as { type: string; clientId: string }
+        if (status.clientId === clientId.current) {
+          setControlStatus(status.type === 'CONTROL_CLAIMED' ? 'claimed' : 'taken')
+        }
       })
       client.publish({
         destination: `/app/session/${sessionId}/claim-control`,
-        body: JSON.stringify({}),
+        body: JSON.stringify({ clientId: clientId.current }),
       })
     },
   })

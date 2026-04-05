@@ -1,8 +1,8 @@
 package com.animbox.backend.games.common.dto;
 
 /**
- * Réponse envoyée en privé au client qui tente de prendre le contrôle d'une session.
- * type = "CONTROL_CLAIMED" → le client est le commandant
- * type = "CONTROL_TAKEN"   → un autre appareil contrôle déjà la session
+ * Réponse broadcast sur /topic/session/{sessionId}/control-status.
+ * type     = "CONTROL_CLAIMED" ou "CONTROL_TAKEN"
+ * clientId = UUID du client qui a envoyé le claim (permet de filtrer côté frontend)
  */
-public record ControlStatusDTO(String type) {}
+public record ControlStatusDTO(String type, String clientId) {}

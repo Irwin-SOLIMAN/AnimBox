@@ -11,11 +11,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -45,24 +47,29 @@ public class GameSessionWebSocketController {
 
     /**
      * Un client tente de prendre le contrôle exclusif d'une session.
-     * Répond sur un topic session-specific pour éviter le routing user (pas de Principal).
      *
-     * Client envoie vers : /app/session/{sessionId}/claim-control
-     * Réponse sur : /topic/control-status/{stompSessionId}
+     * Le frontend envoie un clientId (UUID) dans le body.
+     * La réponse est broadcastée sur /topic/session/{sessionId}/control-status.
+     * Le frontend filtre par clientId pour ne traiter que sa propre réponse.
+     *
+     * Client envoie vers  : /app/session/{sessionId}/claim-control
+     * Réponse broadcast sur : /topic/session/{sessionId}/control-status
      */
     @MessageMapping("/session/{sessionId}/claim-control")
     public void handleClaimControl(@DestinationVariable Long sessionId,
+                                   @Payload Map<String, String> body,
                                    SimpMessageHeaderAccessor headerAccessor) {
         String stompSessionId = headerAccessor.getSessionId();
-        log.info("[claim-control] sessionId={} stompSessionId={}", sessionId, stompSessionId);
+        String clientId = body.getOrDefault("clientId", "");
+        log.info("[claim-control] sessionId={} stompSessionId={} clientId={}", sessionId, stompSessionId, clientId);
 
         String existing = controllers.putIfAbsent(sessionId, stompSessionId);
         boolean claimed = existing == null || existing.equals(stompSessionId);
 
-        ControlStatusDTO response = new ControlStatusDTO(claimed ? "CONTROL_CLAIMED" : "CONTROL_TAKEN");
-        log.info("[claim-control] result={} publishing to /topic/control-status/{}", response.type(), stompSessionId);
+        ControlStatusDTO response = new ControlStatusDTO(claimed ? "CONTROL_CLAIMED" : "CONTROL_TAKEN", clientId);
+        log.info("[claim-control] result={} clientId={}", response.type(), clientId);
 
-        messagingTemplate.convertAndSend("/topic/control-status/" + stompSessionId, response);
+        messagingTemplate.convertAndSend("/topic/session/" + sessionId + "/control-status", response);
     }
 
     /**
