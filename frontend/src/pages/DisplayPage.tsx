@@ -7,10 +7,10 @@ import useWebSocket from '../hooks/useWebSocket'
 const FF_BG = 'radial-gradient(ellipse at 50% 30%, #1a3570 0%, #080f22 65%)'
 
 const DisplayPage = () => {
-  const { id } = useParams<{ id: string }>()
-  const sessionId = Number(id)
+  const { id: token } = useParams<{ id: string }>()
 
   const [state, setState] = useState<GameStateDTO | null>(null)
+  const [sessionId, setSessionId] = useState<number>(0)
   const [loading, setLoading] = useState(true)
 
   // IDs récemment révélés — pour déclencher l'animation d'apparition
@@ -35,17 +35,19 @@ const DisplayPage = () => {
   }
 
   useEffect(() => {
+    if (!token) return
     gameSessionService
-      .getState(sessionId)
+      .getStateByToken(token)
       .then((s) => {
+        setSessionId(s.sessionId)
         prevRevealedRef.current = new Set(s.revealedAnswerIds)
         setState(s)
       })
       .finally(() => setLoading(false))
-  }, [sessionId])
+  }, [token])
 
   useWebSocket<GameStateDTO>({
-    topic: `/topic/session/${sessionId}`,
+    topic: sessionId ? `/topic/session/${sessionId}` : '',
     onMessage: updateState,
   })
 

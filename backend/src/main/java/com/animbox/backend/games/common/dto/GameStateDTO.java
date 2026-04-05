@@ -14,6 +14,7 @@ import java.util.Set;
  */
 public record GameStateDTO(
         Long sessionId,
+        String token,
         SessionStatus status,
         int currentQuestionIndex,
         int totalQuestions,
@@ -66,6 +67,7 @@ public record GameStateDTO(
 
         return new GameStateDTO(
                 session.getId(),
+                session.getToken(),
                 session.getStatus(),
                 idx,
                 questions.size(),

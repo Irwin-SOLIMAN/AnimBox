@@ -23,6 +23,8 @@ function useWebSocket<T>({ topic, onMessage, onError, onConnect }: UseWebSocketO
   const clientRef = useRef<Client | null>(null)
 
   useEffect(() => {
+    if (!topic) return
+
     const client = new Client({
       webSocketFactory: () => new SockJS(`${WS_BASE}/ws`),
       reconnectDelay: 5000,

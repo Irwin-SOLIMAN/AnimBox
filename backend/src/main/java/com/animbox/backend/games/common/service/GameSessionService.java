@@ -49,8 +49,8 @@ public class GameSessionService {
         User host = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("Utilisateur introuvable"));
 
-        // L'animateur ne peut lancer que ses propres GameSets
-        GameSet gameSet = gameSetRepository.findByIdAndCreatedByEmail(request.gameSetId(), email)
+        // L'animateur peut utiliser ses propres GameSets ou les GameSets publics (presets)
+        GameSet gameSet = gameSetRepository.findByIdForUser(request.gameSetId(), email)
                 .orElseThrow(() -> new NoSuchElementException("GameSet introuvable : " + request.gameSetId()));
 
         GameSession session = new GameSession(gameSet, host, request.teamAName(), request.teamBName());
@@ -78,6 +78,14 @@ public class GameSessionService {
         return GameStateDTO.from(
                 sessionRepository.findById(id)
                         .orElseThrow(() -> new NoSuchElementException("GameSession introuvable : " + id))
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public GameStateDTO getStateByToken(String token) {
+        return GameStateDTO.from(
+                sessionRepository.findByToken(token)
+                        .orElseThrow(() -> new NoSuchElementException("GameSession introuvable : " + token))
         );
     }
 

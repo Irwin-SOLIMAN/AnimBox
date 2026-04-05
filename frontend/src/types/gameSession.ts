@@ -19,6 +19,7 @@ export interface ActionDTO {
 
 export interface GameStateDTO {
   sessionId: number
+  token: string
   status: SessionStatus
   currentQuestionIndex: number
   totalQuestions: number
@@ -40,6 +41,7 @@ export interface GameStateDTO {
 
 export interface GameSessionResponse {
   id: number
+  token: string
   status: SessionStatus
   teamAName: string
   teamBName: string

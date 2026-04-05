@@ -9,25 +9,29 @@ type ControlStatus = 'pending' | 'claimed' | 'taken'
 const FF_BG = 'radial-gradient(ellipse at 50% 20%, #1a3570 0%, #080f22 70%)'
 
 const ControlPanelPage = () => {
-  const { id } = useParams<{ id: string }>()
-  const sessionId = Number(id)
+  const { id: token } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
   const [state, setState] = useState<GameStateDTO | null>(null)
+  const [sessionId, setSessionId] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [controlStatus, setControlStatus] = useState<ControlStatus>('pending')
 
   useEffect(() => {
+    if (!token) return
     gameSessionService
-      .getState(sessionId)
-      .then(setState)
-      .catch(() => setError('Impossible de charger la session'))
+      .getStateByToken(token)
+      .then((s) => {
+        setSessionId(s.sessionId)
+        setState(s)
+      })
+      .catch(() => setError('Session introuvable'))
       .finally(() => setLoading(false))
-  }, [sessionId])
+  }, [token])
 
   const { send, isConnected } = useWebSocket<GameStateDTO>({
-    topic: `/topic/session/${sessionId}`,
+    topic: sessionId ? `/topic/session/${sessionId}` : '',
     onMessage: setState,
     onError: (msg) => setError(msg),
     onConnect: (client) => {
