@@ -8,6 +8,7 @@ import java.util.Set;
 
 public record GameSessionResponse(
         Long id,
+        String token,
         GameSetResponse gameSet,
         SessionStatus status,
         int currentQuestionIndex,
@@ -23,6 +24,7 @@ public record GameSessionResponse(
     public static GameSessionResponse from(GameSession session) {
         return new GameSessionResponse(
                 session.getId(),
+                session.getToken(),
                 GameSetResponse.from(session.getGameSet()),
                 session.getStatus(),
                 session.getCurrentQuestionIndex(),

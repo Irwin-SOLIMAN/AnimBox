@@ -71,6 +71,7 @@ public class SecurityConfig {
                         .requestMatchers("/ws/**").permitAll()
                         // État d'une session — accessible sans token pour l'écran TV public
                         .requestMatchers("/api/game-sessions/*/state").permitAll()
+                        .requestMatchers("/api/game-sessions/by-token/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

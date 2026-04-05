@@ -40,7 +40,7 @@ public class GameSetService {
 
     @Transactional(readOnly = true)
     public List<GameSetResponse> findAllForUser(String email) {
-        return gameSetRepository.findByCreatedByEmail(email)
+        return gameSetRepository.findAllForUser(email)
                 .stream()
                 .map(GameSetResponse::from)
                 .toList();

@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 @Entity
 @Table(name = "game_sessions")
@@ -70,11 +71,15 @@ public class GameSession extends BaseEntity {
     @Column(nullable = false)
     private boolean stealPhase = false;
 
+    @Column(unique = true, nullable = false, updatable = false)
+    private String token;
+
     public GameSession(GameSet gameSet, User host, String teamAName, String teamBName) {
         this.gameSet = gameSet;
         this.host = host;
         this.teamAName = teamAName;
         this.teamBName = teamBName;
+        this.token = UUID.randomUUID().toString();
     }
 
     public void start() {

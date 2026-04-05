@@ -39,10 +39,18 @@ public class GameSet extends BaseEntity {
     @OrderColumn(name = "position")
     private List<FamilyFeudQuestion> questions = new ArrayList<>();
 
+    @Column(nullable = false)
+    private boolean isPublic = false;
+
     public GameSet(String name, GameType gameType, User createdBy) {
         this.name = name;
         this.gameType = gameType;
         this.createdBy = createdBy;
+    }
+
+    public GameSet(String name, GameType gameType, User createdBy, boolean isPublic) {
+        this(name, gameType, createdBy);
+        this.isPublic = isPublic;
     }
 
     public void update(String name) {

@@ -11,4 +11,6 @@ public interface GameSessionRepository extends JpaRepository<GameSession, Long> 
     List<GameSession> findByHostEmail(String email);
 
     Optional<GameSession> findByIdAndHostEmail(Long id, String email);
+
+    Optional<GameSession> findByToken(String token);
 }

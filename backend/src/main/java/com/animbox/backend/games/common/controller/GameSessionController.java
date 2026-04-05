@@ -64,6 +64,12 @@ public class GameSessionController {
         return ResponseEntity.ok(sessionService.getState(id));
     }
 
+    // Endpoint public — accès par token opaque (pour l'écran TV et la télécommande)
+    @GetMapping("/by-token/{token}/state")
+    public ResponseEntity<GameStateDTO> getStateByToken(@PathVariable String token) {
+        return ResponseEntity.ok(sessionService.getStateByToken(token));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
