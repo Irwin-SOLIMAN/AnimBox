@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Client } from '@stomp/stompjs'
+import { Client, IFrame } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 
 // Dérive l'URL WebSocket depuis VITE_API_URL (ex: http://localhost:8080/api → http://localhost:8080)
@@ -10,7 +10,7 @@ interface UseWebSocketOptions<T> {
   topic: string
   onMessage: (data: T) => void
   onError?: (message: string) => void
-  onConnect?: (client: Client) => void
+  onConnect?: (client: Client, frame: IFrame) => void
 }
 
 interface UseWebSocketReturn {
@@ -29,7 +29,7 @@ function useWebSocket<T>({ topic, onMessage, onError, onConnect }: UseWebSocketO
       webSocketFactory: () => new SockJS(`${WS_BASE}/ws`),
       reconnectDelay: 5000,
 
-      onConnect: () => {
+      onConnect: (frame: IFrame) => {
         setIsConnected(true)
         client.subscribe(topic, (message) => {
           try {
@@ -38,7 +38,7 @@ function useWebSocket<T>({ topic, onMessage, onError, onConnect }: UseWebSocketO
             onError?.('Erreur de parsing du message WebSocket')
           }
         })
-        onConnect?.(client)
+        onConnect?.(client, frame)
       },
 
       onDisconnect: () => {
