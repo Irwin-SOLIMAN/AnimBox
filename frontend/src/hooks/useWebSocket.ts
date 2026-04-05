@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Client, IFrame } from '@stomp/stompjs'
+import { Client, type IFrame } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
 
 // Dérive l'URL WebSocket depuis VITE_API_URL (ex: http://localhost:8080/api → http://localhost:8080)
