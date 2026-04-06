@@ -40,6 +40,7 @@ const GameSetsPage = () => {
   const [formLoading, setFormLoading] = useState(false)
 
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -123,7 +124,15 @@ const GameSetsPage = () => {
   const removeQuestion = (id: number) =>
     setSelectedQuestions((prev) => prev.filter((q) => q.id !== id))
 
-  const handleDragStart = (index: number) => setDragIndex(index)
+  const handleDragStart = (index: number) => {
+    setDragIndex(index)
+    setDragOverIndex(null)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    setDragOverIndex(index)
+  }
 
   const handleDrop = (dropIndex: number) => {
     if (dragIndex === null || dragIndex === dropIndex) return
@@ -132,7 +141,28 @@ const GameSetsPage = () => {
     newList.splice(dropIndex, 0, moved)
     setSelectedQuestions(newList)
     setDragIndex(null)
+    setDragOverIndex(null)
   }
+
+  const handleDragEnd = () => {
+    setDragIndex(null)
+    setDragOverIndex(null)
+  }
+
+  // Regroupement par catégorie pour la banque de questions
+  const categorizedAvailable = (() => {
+    const groups: Record<string, typeof availableQuestions> = {}
+    for (const q of availableQuestions) {
+      const key = q.category?.trim() || 'Sans catégorie'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(q)
+    }
+    return Object.entries(groups).sort(([a], [b]) => {
+      if (a === 'Sans catégorie') return 1
+      if (b === 'Sans catégorie') return -1
+      return a.localeCompare(b, 'fr')
+    })
+  })()
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -317,25 +347,27 @@ const GameSetsPage = () => {
                 onChange={(e) => setQuestionFilter(e.target.value)}
                 className="mb-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50"
               />
-              <div className="flex max-h-72 flex-col gap-1 overflow-y-auto rounded-xl border border-white/8 bg-black/20 p-2">
+              <div className="flex max-h-72 flex-col overflow-y-auto rounded-xl border border-white/8 bg-black/20 p-2">
                 {availableQuestions.length === 0 && (
                   <p className="p-2 text-sm text-white/20">Aucune question disponible</p>
                 )}
-                {availableQuestions.map((q) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={() => addQuestion(q)}
-                    className="flex items-start gap-2 rounded-lg p-2 text-left text-sm hover:bg-white/5 transition"
-                  >
-                    <span className="mt-0.5 shrink-0 text-[#f4b942]">+</span>
-                    <span>
-                      <span className="font-medium text-white/80">{q.text}</span>
-                      {q.category && (
-                        <span className="ml-2 text-xs text-white/30">{q.category}</span>
-                      )}
-                    </span>
-                  </button>
+                {categorizedAvailable.map(([category, questions]) => (
+                  <div key={category} className="mb-1">
+                    <p className="sticky top-0 z-10 bg-black/40 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#f4b942]/50">
+                      {category}
+                    </p>
+                    {questions.map((q) => (
+                      <button
+                        key={q.id}
+                        type="button"
+                        onClick={() => addQuestion(q)}
+                        className="flex w-full items-start gap-2 rounded-lg p-2 text-left text-sm hover:bg-white/5 transition"
+                      >
+                        <span className="mt-0.5 shrink-0 text-[#f4b942]/60">+</span>
+                        <span className="font-medium text-white/70">{q.text}</span>
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>
@@ -345,34 +377,59 @@ const GameSetsPage = () => {
               <p className="mb-2 text-xs font-bold uppercase tracking-wider text-white/30">
                 Set ({selectedQuestions.length} sélectionnées)
               </p>
-              <div className="flex max-h-80 flex-col gap-1 overflow-y-auto rounded-xl border border-white/8 bg-black/20 p-2">
+              <div
+                className="flex max-h-80 flex-col overflow-y-auto rounded-xl border border-white/8 bg-black/20 p-2"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => dragOverIndex !== null && handleDrop(dragOverIndex)}
+                onDragLeave={() => setDragOverIndex(null)}
+              >
                 {selectedQuestions.length === 0 && (
                   <p className="p-2 text-sm text-white/20">Aucune question sélectionnée</p>
                 )}
-                {selectedQuestions.map((q, i) => (
-                  <div
-                    key={q.id}
-                    draggable
-                    onDragStart={() => handleDragStart(i)}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(i)}
-                    className={`flex cursor-grab items-center gap-2 rounded-lg border p-2 text-sm transition ${
-                      dragIndex === i
-                        ? 'border-[#f4b942]/40 bg-[#f4b942]/10 opacity-50'
-                        : 'border-transparent hover:bg-white/5'
-                    }`}
-                  >
-                    <span className="shrink-0 text-white/20">⠿</span>
-                    <span className="flex-1 text-white/70">{q.text}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeQuestion(q.id)}
-                      className="shrink-0 text-white/20 hover:text-red-400 transition"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+                {selectedQuestions.map((q, i) => {
+                  const isBeingDragged = dragIndex === i
+                  const isDropTarget = dragOverIndex === i && dragIndex !== null && dragIndex !== i
+                  const dropAbove = isDropTarget && dragIndex !== null && dragIndex > i
+                  const dropBelow = isDropTarget && dragIndex !== null && dragIndex < i
+
+                  return (
+                    <div key={q.id} className="flex flex-col">
+                      {/* Indicateur de dépôt AU-DESSUS */}
+                      {dropAbove && (
+                        <div className="mx-2 my-0.5 h-0.5 rounded-full bg-[#f4b942] shadow-[0_0_6px_rgba(244,185,66,0.6)]" />
+                      )}
+                      <div
+                        draggable
+                        onDragStart={() => handleDragStart(i)}
+                        onDragOver={(e) => handleDragOver(e, i)}
+                        onDrop={() => handleDrop(i)}
+                        onDragEnd={handleDragEnd}
+                        className={`flex cursor-grab items-center gap-2 rounded-lg border p-2 text-sm transition-all select-none ${
+                          isBeingDragged
+                            ? 'border-[#f4b942]/30 bg-[#f4b942]/5 opacity-40 scale-95'
+                            : isDropTarget
+                              ? 'border-white/10 bg-white/5'
+                              : 'border-transparent hover:bg-white/5'
+                        }`}
+                      >
+                        <span className="shrink-0 text-white/20 text-lg leading-none">⠿</span>
+                        <span className="mr-1 shrink-0 text-xs font-bold text-white/20">{i + 1}.</span>
+                        <span className="flex-1 text-white/70">{q.text}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeQuestion(q.id)}
+                          className="shrink-0 text-white/20 hover:text-red-400 transition"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {/* Indicateur de dépôt EN-DESSOUS */}
+                      {dropBelow && (
+                        <div className="mx-2 my-0.5 h-0.5 rounded-full bg-[#f4b942] shadow-[0_0_6px_rgba(244,185,66,0.6)]" />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
