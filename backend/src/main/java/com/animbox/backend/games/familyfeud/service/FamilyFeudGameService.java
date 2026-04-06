@@ -60,14 +60,20 @@ public class FamilyFeudGameService {
                 .anyMatch(a -> a.getId().equals(answerId)
                         && !session.getRevealedAnswerIds().contains(a.getId()));
 
+        if (isValidSteal) {
+            // Révéler la réponse AVANT de calculer les points
+            // pour que son score soit inclus dans le total du tour
+            session.revealAnswer(answerId);
+        }
+
         int points = computeRoundPoints(session, currentQuestion);
 
         if (isValidSteal) {
-            session.revealAnswer(answerId);
-            // L'équipe adverse (pas teamAPlaying) remporte les points
+            // L'équipe adverse (pas teamAPlaying) remporte TOUS les points du tour
+            // (ceux révélés par A + la réponse volée par B)
             session.addScore(!session.isTeamAPlaying(), points);
         } else {
-            // L'équipe qui jouait conserve les points
+            // Mauvaise réponse : l'équipe qui jouait conserve les points déjà accumulés
             session.addScore(session.isTeamAPlaying(), points);
         }
 
