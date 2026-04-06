@@ -45,18 +45,20 @@ const GamesPage = () => {
             )}
 
             <div className="flex flex-col gap-2">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => navigate(`/games/${toRoute(game.code)}/questions`)}
-              >
-                Gérer les questions
-              </Button>
+              {game.code !== 'BLIND_TEST' && (
+                <Button
+                  variant="secondary"
+                  className="w-full"
+                  onClick={() => navigate(`/games/${toRoute(game.code)}/questions`)}
+                >
+                  Gérer les questions
+                </Button>
+              )}
               <Button
                 className="w-full"
                 onClick={() => navigate(`/games/${toRoute(game.code)}/game-sets`)}
               >
-                Gérer les parties
+                {game.code === 'BLIND_TEST' ? 'Gérer les playlists' : 'Gérer les parties'}
               </Button>
             </div>
           </div>

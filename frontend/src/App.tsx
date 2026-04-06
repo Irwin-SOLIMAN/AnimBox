@@ -10,6 +10,9 @@ import GameSetsPage from './pages/GameSetsPage'
 import ControlPanelPage from './pages/ControlPanelPage'
 import DisplayPage from './pages/DisplayPage'
 import SessionLobbyPage from './pages/SessionLobbyPage'
+import BlindTestGameSetsPage from './pages/BlindTestGameSetsPage'
+import BlindTestControlPage from './pages/BlindTestControlPage'
+import BlindTestDisplayPage from './pages/BlindTestDisplayPage'
 import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
@@ -21,16 +24,19 @@ function App() {
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      {/* Display public — pas besoin d'être connecté sur la TV */}
+      {/* Family Feud — display + control publics */}
       <Route path="/game-sessions/:id/display" element={<DisplayPage />} />
-      {/* Control public — un seul commandant autorisé à la fois (géré par WebSocket) */}
       <Route path="/game-sessions/:id/control" element={<ControlPanelPage />} />
+      {/* Blind Test — display + control publics */}
+      <Route path="/blind-test/:id/display" element={<BlindTestDisplayPage />} />
+      <Route path="/blind-test/:id/control" element={<BlindTestControlPage />} />
 
       {/* Routes protégées */}
       <Route element={<ProtectedRoute />}>
         <Route path="/games" element={<GamesPage />} />
         <Route path="/games/family-feud/questions" element={<FamilyFeudQuestionsPage />} />
         <Route path="/games/family-feud/game-sets" element={<GameSetsPage />} />
+        <Route path="/games/blind-test/game-sets" element={<BlindTestGameSetsPage />} />
         <Route path="/game-sessions/:id/lobby" element={<SessionLobbyPage />} />
       </Route>
 

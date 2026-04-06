@@ -72,6 +72,9 @@ public class SecurityConfig {
                         // État d'une session — accessible sans token pour l'écran TV public
                         .requestMatchers("/api/game-sessions/*/state").permitAll()
                         .requestMatchers("/api/game-sessions/by-token/**").permitAll()
+                        // Blind Test : état public (TV / panel) + recherche Deezer
+                        .requestMatchers("/api/blind-test/state/by-token/**").permitAll()
+                        .requestMatchers("/api/blind-test/deezer/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session
