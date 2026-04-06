@@ -13,7 +13,8 @@ package com.animbox.backend.games.common.dto;
  */
 public record ActionDTO(
         ActionType type,
-        Long answerId,    // REVEAL_ANSWER
-        Boolean teamA,    // ADD_SCORE — true = équipe A, false = équipe B
-        Integer points    // ADD_SCORE
+        Long answerId,    // REVEAL_ANSWER, STEAL
+        Boolean teamA,    // ADD_SCORE, END_ROUND, RAISE_HAND (true = équipe A)
+        Integer points,   // ADD_SCORE
+        Long teamId       // RAISE_HAND (Blind Test) — ID de l'équipe qui lève la main
 ) {}

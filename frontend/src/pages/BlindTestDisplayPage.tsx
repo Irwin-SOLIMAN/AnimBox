@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { blindTestService } from '../services/blindTestService'
-import type { BlindTestStateDTO } from '../types/blindTest'
+import type { BlindTestStateDTO, BlindTestTeamDTO } from '../types/blindTest'
 import useWebSocket from '../hooks/useWebSocket'
 
 const BG = 'radial-gradient(ellipse at 50% 20%, #1a0a3d 0%, #080f22 70%)'
@@ -23,22 +23,15 @@ export default function BlindTestDisplayPage() {
       .catch(() => setError('Session introuvable'))
   }, [token])
 
-  // Sync audio
   useEffect(() => {
     const audio = audioRef.current
     if (!audio || !state) return
-
     if (state.previewUrl && state.previewUrl !== lastPreviewUrl.current) {
       audio.src = state.previewUrl
       lastPreviewUrl.current = state.previewUrl
       if (state.playing) audio.play().catch(() => {})
     }
-
-    if (state.playing) {
-      audio.play().catch(() => {})
-    } else {
-      audio.pause()
-    }
+    state.playing ? audio.play().catch(() => {}) : audio.pause()
   }, [state?.playing, state?.previewUrl])
 
   useWebSocket<BlindTestStateDTO>({
@@ -55,102 +48,108 @@ export default function BlindTestDisplayPage() {
 
   if (!state) return (
     <div className="flex min-h-screen items-center justify-center" style={{ background: BG }}>
-      <p className="animate-pulse text-2xl font-bold text-yellow-400">La partie va bientôt commencer...</p>
+      <p className="animate-pulse text-3xl font-bold text-yellow-400">
+        La partie va bientôt commencer...
+      </p>
     </div>
   )
 
-  const handTeamName =
-    state.handState === 'A' ? state.teamAName :
-    state.handState === 'B' ? state.teamBName : null
+  const maxScore = Math.max(...state.teams.map((t) => t.score), 1)
+  const raisedTeam = state.teams.find((t) => t.id === state.raisedTeamId) ?? null
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: BG }}>
       <audio ref={audioRef} />
 
-      {/* Scores */}
-      <div className="grid grid-cols-2 gap-4 p-6">
-        {([['A', state.teamAName, state.teamAScore], ['B', state.teamBName, state.teamBScore]] as const).map(
-          ([key, name, score]) => (
-            <div
-              key={key}
-              className={`rounded-3xl border-4 p-6 text-center transition-all duration-500
-                ${state.handState === key
-                  ? 'border-yellow-400 bg-yellow-400/15 shadow-[0_0_40px_rgba(244,185,66,0.4)]'
-                  : 'border-white/10 bg-white/5'
-                }`}
-            >
-              <p className="text-2xl font-bold text-white/80">{name}</p>
-              <p className={`text-6xl font-black ${state.handState === key ? 'text-yellow-400' : 'text-white'}`}>
-                {score}
+      {/* Pintes de bière — zone principale */}
+      <div className="flex flex-1 items-end justify-center gap-6 px-8 pt-8 pb-4">
+        {state.teams.map((team) => {
+          const fillPct = state.status === 'FINISHED'
+            ? (team.score / maxScore) * 90
+            : (team.score / maxScore) * 75
+          const isRaised = team.id === state.raisedTeamId
+
+          return (
+            <div key={team.id} className="flex flex-col items-center gap-3" style={{ flex: 1, maxWidth: 140 }}>
+              {/* Animation "main levée" */}
+              {isRaised && (
+                <div className="animate-bounce text-4xl">🙋</div>
+              )}
+              {!isRaised && <div className="h-10" />}
+
+              {/* Pinte de bière */}
+              <BeerGlass fillPct={fillPct} isHighlighted={isRaised} />
+
+              {/* Nom de l'équipe */}
+              <p className={`text-center text-lg font-black transition-colors
+                ${isRaised ? 'text-yellow-400' : 'text-white'}`}>
+                {team.name}
               </p>
+
+              {/* Score visible uniquement en fin de partie */}
+              {state.status === 'FINISHED' && (
+                <p className="text-2xl font-black text-yellow-400">{team.score} pts</p>
+              )}
             </div>
           )
-        )}
+        })}
       </div>
 
-      {/* Zone centrale */}
-      <div className="flex flex-1 flex-col items-center justify-center px-8 text-center">
-
-        {/* Indicateur main levée */}
-        {handTeamName && (
-          <div className="mb-8 animate-bounce rounded-2xl border-2 border-yellow-400 bg-yellow-400/10 px-8 py-4">
-            <p className="text-3xl font-black text-yellow-400">🙋 {handTeamName} !</p>
-          </div>
-        )}
-
-        {/* Info piste */}
+      {/* Bande du bas */}
+      <div className="border-t border-white/10 bg-black/30 px-8 py-5">
         {state.status === 'WAITING' && (
-          <p className="text-3xl font-bold text-white/50">La partie va bientôt commencer...</p>
+          <p className="text-center text-2xl font-bold text-white/50">En attente de l'animateur...</p>
         )}
 
         {state.status === 'IN_PROGRESS' && (
-          <div className="w-full max-w-xl">
+          <div className="flex items-center justify-between">
             {/* Statut lecture */}
-            <div className="mb-6 flex items-center justify-center gap-3">
+            <div className="flex items-center gap-3">
               {state.playing ? (
                 <>
                   <MusicBars />
                   <span className="text-lg font-bold text-yellow-400">En cours...</span>
-                  <MusicBars />
                 </>
               ) : (
                 <span className="text-lg text-white/30">⏸ En pause</span>
               )}
             </div>
 
-            {/* Piste révélée ou masquée */}
+            {/* Piste */}
             {state.trackRevealed && state.currentTrack ? (
-              <div className="rounded-3xl border border-yellow-400/30 bg-white/5 p-8">
-                <p className="mb-2 text-4xl font-black text-white">{state.currentTrack.title}</p>
-                <p className="text-2xl text-white/60">{state.currentTrack.artist}</p>
+              <div className="text-right">
+                <p className="text-xl font-black text-white">{state.currentTrack.title}</p>
+                <p className="text-base text-white/60">{state.currentTrack.artist}</p>
               </div>
             ) : (
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-8">
-                <p className="text-5xl font-black text-white/20">♪ ♪ ♪</p>
-                <p className="mt-3 text-lg text-white/30">Quelle est cette chanson ?</p>
+              <div className="flex items-center gap-2 text-right">
+                <span className="text-3xl text-white/20">♪</span>
+                <div>
+                  <p className="text-lg font-bold text-white/20">???</p>
+                  <p className="text-sm text-white/20">
+                    Piste {state.currentTrackIndex + 1} / {state.totalTracks}
+                  </p>
+                </div>
               </div>
             )}
-
-            {/* Numéro de piste */}
-            <p className="mt-4 text-sm text-white/30">
-              Piste {state.currentTrackIndex + 1} / {state.totalTracks}
-            </p>
           </div>
         )}
 
         {state.status === 'FINISHED' && (
           <div className="text-center">
-            <p className="mb-4 text-5xl font-black text-yellow-400">🏆</p>
-            <p className="text-3xl font-black text-white">
-              {state.teamAScore > state.teamBScore
-                ? `${state.teamAName} gagne !`
-                : state.teamBScore > state.teamAScore
-                  ? `${state.teamBName} gagne !`
-                  : 'Égalité !'}
-            </p>
-            <p className="mt-2 text-xl text-white/50">
-              {state.teamAScore} — {state.teamBScore}
-            </p>
+            {(() => {
+              const sorted = [...state.teams].sort((a, b) => b.score - a.score)
+              const winner = sorted[0]
+              const tied = sorted.filter(t => t.score === winner.score).length > 1
+              return (
+                <>
+                  <p className="text-4xl font-black text-yellow-400">🏆 Partie terminée !</p>
+                  <p className="mt-1 text-2xl font-bold text-white">
+                    {tied ? 'Égalité !' : `${winner.name} gagne !`}
+                  </p>
+                </>
+              )
+            })()}
           </div>
         )}
       </div>
@@ -158,16 +157,106 @@ export default function BlindTestDisplayPage() {
   )
 }
 
+// ── Beer glass SVG ────────────────────────────────────────────────────────────
+
+function BeerGlass({ fillPct, isHighlighted }: { fillPct: number; isHighlighted: boolean }) {
+  const clampedFill = Math.max(0, Math.min(100, fillPct))
+  const glowStyle = isHighlighted
+    ? { filter: 'drop-shadow(0 0 16px rgba(244,185,66,0.7))' }
+    : {}
+
+  return (
+    <div style={{ ...glowStyle, width: '100%', maxWidth: 90 }}>
+      <svg viewBox="0 0 80 140" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%' }}>
+        {/* Définitions */}
+        <defs>
+          <clipPath id={`glass-clip-${isHighlighted}`}>
+            {/* Forme intérieure du verre (légèrement inclinée en haut) */}
+            <polygon points="10,10 70,10 65,130 15,130" />
+          </clipPath>
+          <linearGradient id="beer-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#b8720a" />
+            <stop offset="40%" stopColor="#f59e0b" />
+            <stop offset="100%" stopColor="#d97706" />
+          </linearGradient>
+          <linearGradient id="foam-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#fefce8" />
+            <stop offset="100%" stopColor="#fde68a" />
+          </linearGradient>
+          <linearGradient id="glass-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
+            <stop offset="30%" stopColor="rgba(255,255,255,0.05)" />
+            <stop offset="70%" stopColor="rgba(255,255,255,0.05)" />
+            <stop offset="100%" stopColor="rgba(255,255,255,0.1)" />
+          </linearGradient>
+        </defs>
+
+        {/* Fond verre (vide) */}
+        <polygon
+          points="10,10 70,10 65,130 15,130"
+          fill="rgba(30,20,60,0.8)"
+          stroke={isHighlighted ? '#f4b942' : 'rgba(255,255,255,0.2)'}
+          strokeWidth="2"
+        />
+
+        {/* Remplissage bière (clipé dans la forme du verre) */}
+        <g clipPath={`url(#glass-clip-${isHighlighted})`}>
+          {/* Bière */}
+          <rect
+            x="0" y={130 - (clampedFill / 100) * 120} width="80" height={clampedFill / 100 * 120}
+            fill="url(#beer-grad)"
+            style={{ transition: 'y 1.2s cubic-bezier(0.34,1.56,0.64,1), height 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+          />
+          {/* Mousse */}
+          {clampedFill > 3 && (
+            <rect
+              x="0" y={130 - (clampedFill / 100) * 120 - 14} width="80" height="16"
+              fill="url(#foam-grad)"
+              rx="4"
+              style={{ transition: 'y 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}
+            />
+          )}
+          {/* Bulles */}
+          {clampedFill > 10 && [25, 40, 55].map((x, i) => (
+            <circle
+              key={i}
+              cx={x} cy={130 - (clampedFill / 100) * 60 - i * 15}
+              r="2" fill="rgba(255,255,255,0.3)"
+            />
+          ))}
+        </g>
+
+        {/* Reflet verre par-dessus */}
+        <polygon
+          points="10,10 70,10 65,130 15,130"
+          fill="url(#glass-grad)"
+        />
+
+        {/* Anse */}
+        <path
+          d="M 68,40 Q 88,40 88,65 Q 88,90 68,90"
+          fill="none"
+          stroke={isHighlighted ? '#f4b942' : 'rgba(255,255,255,0.2)'}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
+      </svg>
+    </div>
+  )
+}
+
+// ── Music bars animation ──────────────────────────────────────────────────────
+
 function MusicBars() {
   return (
-    <div className="flex items-end gap-0.5 h-6">
+    <div className="flex items-end gap-0.5" style={{ height: 24 }}>
       {[1, 2, 3, 4].map((i) => (
         <div
           key={i}
-          className="w-1 rounded-full bg-yellow-400"
+          className="w-1.5 rounded-full bg-yellow-400"
           style={{
-            height: `${40 + Math.sin(i * 1.5) * 30}%`,
-            animation: `pulse ${0.6 + i * 0.15}s ease-in-out infinite alternate`,
+            height: `${50 + Math.sin(i * 1.5) * 30}%`,
+            animation: `pulse ${0.5 + i * 0.15}s ease-in-out infinite alternate`,
           }}
         />
       ))}

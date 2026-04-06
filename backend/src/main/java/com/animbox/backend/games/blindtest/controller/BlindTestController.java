@@ -1,14 +1,18 @@
 package com.animbox.backend.games.blindtest.controller;
 
+import com.animbox.backend.auth.model.User;
+import com.animbox.backend.auth.repository.UserRepository;
 import com.animbox.backend.games.blindtest.dto.*;
+import com.animbox.backend.games.blindtest.model.BlindTestTeam;
 import com.animbox.backend.games.blindtest.model.BlindTestTrack;
+import com.animbox.backend.games.blindtest.repository.BlindTestTeamRepository;
 import com.animbox.backend.games.blindtest.repository.BlindTestTrackRepository;
 import com.animbox.backend.games.blindtest.service.BlindTestGameService;
 import com.animbox.backend.games.blindtest.service.DeezerService;
-import com.animbox.backend.auth.model.User;
-import com.animbox.backend.auth.repository.UserRepository;
+import com.animbox.backend.games.common.model.GameSession;
 import com.animbox.backend.games.common.model.GameSet;
 import com.animbox.backend.games.common.model.GameType;
+import com.animbox.backend.games.common.repository.GameSessionRepository;
 import com.animbox.backend.games.common.repository.GameSetRepository;
 import com.animbox.backend.games.common.repository.GameTypeRepository;
 import org.springframework.http.HttpStatus;
@@ -25,24 +29,30 @@ import java.util.NoSuchElementException;
 public class BlindTestController {
 
     private final BlindTestTrackRepository trackRepository;
-    private final GameSetRepository gameSetRepository;
-    private final GameTypeRepository gameTypeRepository;
-    private final UserRepository userRepository;
-    private final DeezerService deezerService;
-    private final BlindTestGameService gameService;
+    private final BlindTestTeamRepository  teamRepository;
+    private final GameSetRepository        gameSetRepository;
+    private final GameSessionRepository    sessionRepository;
+    private final GameTypeRepository       gameTypeRepository;
+    private final UserRepository           userRepository;
+    private final DeezerService            deezerService;
+    private final BlindTestGameService     gameService;
 
     public BlindTestController(BlindTestTrackRepository trackRepository,
+                                BlindTestTeamRepository teamRepository,
                                 GameSetRepository gameSetRepository,
+                                GameSessionRepository sessionRepository,
                                 GameTypeRepository gameTypeRepository,
                                 UserRepository userRepository,
                                 DeezerService deezerService,
                                 BlindTestGameService gameService) {
-        this.trackRepository = trackRepository;
+        this.trackRepository   = trackRepository;
+        this.teamRepository    = teamRepository;
         this.gameSetRepository = gameSetRepository;
+        this.sessionRepository = sessionRepository;
         this.gameTypeRepository = gameTypeRepository;
-        this.userRepository = userRepository;
-        this.deezerService = deezerService;
-        this.gameService = gameService;
+        this.userRepository    = userRepository;
+        this.deezerService     = deezerService;
+        this.gameService       = gameService;
     }
 
     // ── Sets ────────────────────────────────────────────────────────────────
@@ -120,6 +130,63 @@ public class BlindTestController {
         return ResponseEntity.noContent().build();
     }
 
+    // ── Sessions ─────────────────────────────────────────────────────────────
+
+    @GetMapping("/sessions")
+    public ResponseEntity<List<BlindTestSessionDTO>> getSessions(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        List<BlindTestSessionDTO> sessions = sessionRepository
+                .findByHostEmailAndGameSet_GameType_Code(userDetails.getUsername(), "BLIND_TEST")
+                .stream()
+                .filter(s -> s.getStatus() != com.animbox.backend.games.common.model.SessionStatus.FINISHED)
+                .map(s -> BlindTestSessionDTO.from(s,
+                        teamRepository.findBySession_IdOrderByPosition(s.getId())
+                                .stream().map(BlindTestTeamDTO::from).toList()))
+                .toList();
+        return ResponseEntity.ok(sessions);
+    }
+
+    @PostMapping("/sessions")
+    public ResponseEntity<BlindTestSessionDTO> createSession(
+            @RequestBody BlindTestSessionRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        GameSet gameSet = gameSetRepository.findByIdForUser(req.gameSetId(), userDetails.getUsername())
+                .orElseThrow(() -> new NoSuchElementException("Set introuvable: " + req.gameSetId()));
+        User host = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new NoSuchElementException("Utilisateur introuvable"));
+
+        if (req.teamNames() == null || req.teamNames().size() < 2) {
+            throw new IllegalArgumentException("Au moins 2 équipes requises");
+        }
+
+        GameSession session = sessionRepository.save(new GameSession(gameSet, host, "", ""));
+
+        List<String> names = req.teamNames().subList(0, Math.min(req.teamNames().size(), 6));
+        for (int i = 0; i < names.size(); i++) {
+            String name = names.get(i).isBlank() ? "Équipe " + (i + 1) : names.get(i).trim();
+            teamRepository.save(new BlindTestTeam(session, name, i));
+        }
+
+        List<BlindTestTeamDTO> teams = teamRepository
+                .findBySession_IdOrderByPosition(session.getId())
+                .stream().map(BlindTestTeamDTO::from).toList();
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BlindTestSessionDTO.from(session, teams));
+    }
+
+    @DeleteMapping("/sessions/{id}")
+    public ResponseEntity<Void> deleteSession(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        GameSession session = sessionRepository.findByIdAndHostEmail(id, userDetails.getUsername())
+                .orElseThrow(() -> new NoSuchElementException("Session introuvable: " + id));
+        teamRepository.deleteAllBySession_Id(id);
+        gameService.clearCache(id);
+        sessionRepository.delete(session);
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Deezer proxy ─────────────────────────────────────────────────────────
 
     @GetMapping("/deezer/search")
@@ -127,7 +194,7 @@ public class BlindTestController {
         return ResponseEntity.ok(deezerService.search(q));
     }
 
-    // ── État public (pour l'écran TV / panel de contrôle sans auth) ──────────
+    // ── État public ──────────────────────────────────────────────────────────
 
     @GetMapping("/state/by-token/{token}")
     public ResponseEntity<BlindTestStateDTO> getStateByToken(@PathVariable String token) {

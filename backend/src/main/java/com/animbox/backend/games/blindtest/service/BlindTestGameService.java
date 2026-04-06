@@ -1,7 +1,10 @@
 package com.animbox.backend.games.blindtest.service;
 
 import com.animbox.backend.games.blindtest.dto.BlindTestStateDTO;
+import com.animbox.backend.games.blindtest.dto.BlindTestTeamDTO;
 import com.animbox.backend.games.blindtest.dto.BlindTestTrackDTO;
+import com.animbox.backend.games.blindtest.model.BlindTestTeam;
+import com.animbox.backend.games.blindtest.repository.BlindTestTeamRepository;
 import com.animbox.backend.games.blindtest.repository.BlindTestTrackRepository;
 import com.animbox.backend.games.common.dto.ActionDTO;
 import com.animbox.backend.games.common.model.GameSession;
@@ -15,27 +18,31 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class BlindTestGameService {
 
-    private record SessionState(boolean playing, String handState, boolean trackRevealed) {
-        static SessionState initial() { return new SessionState(false, "NONE", false); }
-        SessionState withPlaying(boolean p) { return new SessionState(p, handState, trackRevealed); }
-        SessionState withHand(String h) { return new SessionState(playing, h, trackRevealed); }
-        SessionState withRevealed(boolean r) { return new SessionState(playing, handState, r); }
-        SessionState reset() { return new SessionState(false, "NONE", false); }
+    /** État transient par session (playing, raisedTeamId, trackRevealed). */
+    private record SessionState(boolean playing, Long raisedTeamId, boolean trackRevealed) {
+        static SessionState initial() { return new SessionState(false, null, false); }
+        SessionState withPlaying(boolean p)    { return new SessionState(p, raisedTeamId, trackRevealed); }
+        SessionState withRaisedTeam(Long id)   { return new SessionState(playing, id, trackRevealed); }
+        SessionState withRevealed(boolean r)   { return new SessionState(playing, raisedTeamId, r); }
+        SessionState reset()                   { return new SessionState(false, null, false); }
     }
 
-    private final ConcurrentHashMap<Long, SessionState> states = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, SessionState>           states     = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Long, List<BlindTestTrackDTO>> trackCache = new ConcurrentHashMap<>();
 
-    private final GameSessionRepository sessionRepository;
-    private final BlindTestTrackRepository trackRepository;
-    private final DeezerService deezerService;
+    private final GameSessionRepository     sessionRepository;
+    private final BlindTestTrackRepository  trackRepository;
+    private final BlindTestTeamRepository   teamRepository;
+    private final DeezerService             deezerService;
 
     public BlindTestGameService(GameSessionRepository sessionRepository,
                                  BlindTestTrackRepository trackRepository,
+                                 BlindTestTeamRepository teamRepository,
                                  DeezerService deezerService) {
         this.sessionRepository = sessionRepository;
-        this.trackRepository = trackRepository;
-        this.deezerService = deezerService;
+        this.trackRepository   = trackRepository;
+        this.teamRepository    = teamRepository;
+        this.deezerService     = deezerService;
     }
 
     @Transactional
@@ -43,31 +50,38 @@ public class BlindTestGameService {
         GameSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new NoSuchElementException("Session introuvable: " + sessionId));
 
-        SessionState state = states.getOrDefault(sessionId, SessionState.initial());
+        SessionState state  = states.getOrDefault(sessionId, SessionState.initial());
         List<BlindTestTrackDTO> tracks = getTracks(sessionId, session);
 
         state = switch (action.type()) {
-            case START -> { session.start(); yield state; }
-            case PLAY -> state.withPlaying(true);
-            case PAUSE -> state.withPlaying(false);
+            case START  -> { session.start(); yield state; }
+            case PLAY   -> state.withPlaying(true);
+            case PAUSE  -> state.withPlaying(false);
+
             case NEXT_TRACK -> {
-                if (session.getCurrentQuestionIndex() < tracks.size() - 1) {
-                    session.nextQuestion();
-                }
+                if (session.getCurrentQuestionIndex() < tracks.size() - 1) session.nextQuestion();
                 yield state.reset();
             }
-            case RAISE_HAND -> state.withHand(Boolean.TRUE.equals(action.teamA()) ? "A" : "B");
-            case LOWER_HAND -> state.withHand("NONE");
+
+            case RAISE_HAND -> state.withRaisedTeam(action.teamId());
+            case LOWER_HAND -> state.withRaisedTeam(null);
+
             case AWARD_CORRECT -> {
-                String team = state.handState();
-                int points = tracks.isEmpty() ? 1 :
-                        tracks.get(session.getCurrentQuestionIndex()).pointsValue();
-                session.addScore("A".equals(team), points);
-                yield state.withRevealed(true).withHand("NONE");
+                Long teamId = state.raisedTeamId();
+                if (teamId != null) {
+                    int pts = tracks.isEmpty() ? 1
+                            : tracks.get(session.getCurrentQuestionIndex()).pointsValue();
+                    BlindTestTeam team = teamRepository.findById(teamId)
+                            .orElseThrow(() -> new NoSuchElementException("Team introuvable: " + teamId));
+                    team.addScore(pts);
+                    teamRepository.save(team);
+                }
+                yield state.withRaisedTeam(null).withRevealed(true);
             }
-            case AWARD_WRONG -> state.withHand("NONE");
-            case FINISH -> { session.finish(); yield state.withPlaying(false); }
-            default -> state;
+
+            case AWARD_WRONG -> state.withRaisedTeam(null);
+            case FINISH      -> { session.finish(); yield state.withPlaying(false); }
+            default          -> state;
         };
 
         states.put(sessionId, state);
@@ -78,18 +92,16 @@ public class BlindTestGameService {
     public BlindTestStateDTO getState(Long sessionId) {
         GameSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new NoSuchElementException("Session introuvable: " + sessionId));
-        List<BlindTestTrackDTO> tracks = getTracks(sessionId, session);
-        SessionState state = states.getOrDefault(sessionId, SessionState.initial());
-        return buildDTO(session, tracks, state);
+        return buildDTO(session, getTracks(sessionId, session),
+                states.getOrDefault(sessionId, SessionState.initial()));
     }
 
     @Transactional(readOnly = true)
     public BlindTestStateDTO getStateByToken(String token) {
         GameSession session = sessionRepository.findByToken(token)
                 .orElseThrow(() -> new NoSuchElementException("Session introuvable: " + token));
-        List<BlindTestTrackDTO> tracks = getTracks(session.getId(), session);
-        SessionState state = states.getOrDefault(session.getId(), SessionState.initial());
-        return buildDTO(session, tracks, state);
+        return buildDTO(session, getTracks(session.getId(), session),
+                states.getOrDefault(session.getId(), SessionState.initial()));
     }
 
     private List<BlindTestTrackDTO> getTracks(Long sessionId, GameSession session) {
@@ -99,14 +111,21 @@ public class BlindTestGameService {
         );
     }
 
+    private List<BlindTestTeamDTO> loadTeams(Long sessionId) {
+        return teamRepository.findBySession_IdOrderByPosition(sessionId)
+                .stream().map(BlindTestTeamDTO::from).toList();
+    }
+
     private BlindTestStateDTO buildDTO(GameSession session, List<BlindTestTrackDTO> tracks, SessionState state) {
         int idx = session.getCurrentQuestionIndex();
         String previewUrl = null;
         if (idx < tracks.size()) {
-            Long deezerTrackId = tracks.get(idx).deezerTrackId();
-            previewUrl = deezerService.getPreviewUrl(deezerTrackId).orElse(null);
+            previewUrl = deezerService.getPreviewUrl(tracks.get(idx).deezerTrackId()).orElse(null);
         }
-        return BlindTestStateDTO.from(session, tracks, state.playing(), state.handState(), state.trackRevealed(), previewUrl);
+        return BlindTestStateDTO.from(
+                session, tracks, loadTeams(session.getId()),
+                state.playing(), state.raisedTeamId(), state.trackRevealed(), previewUrl
+        );
     }
 
     public void clearCache(Long sessionId) {

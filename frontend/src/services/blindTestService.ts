@@ -4,6 +4,7 @@ import type {
   BlindTestTrackDTO,
   BlindTestTrackRequest,
   BlindTestStateDTO,
+  BlindTestSessionDTO,
   DeezerSearchResult,
 } from '../types/blindTest'
 
@@ -30,6 +31,17 @@ export const blindTestService = {
 
   deleteTrack: async (trackId: number): Promise<void> => {
     await api.delete(`${BASE}/tracks/${trackId}`)
+  },
+
+  // Sessions
+  getSessions: async (): Promise<BlindTestSessionDTO[]> =>
+    (await api.get<BlindTestSessionDTO[]>(`${BASE}/sessions`)).data,
+
+  createSession: async (gameSetId: number, teamNames: string[]): Promise<BlindTestSessionDTO> =>
+    (await api.post<BlindTestSessionDTO>(`${BASE}/sessions`, { gameSetId, teamNames })).data,
+
+  deleteSession: async (id: number): Promise<void> => {
+    await api.delete(`${BASE}/sessions/${id}`)
   },
 
   // Deezer

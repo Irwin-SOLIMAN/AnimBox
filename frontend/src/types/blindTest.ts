@@ -1,5 +1,11 @@
-export type HandState = 'NONE' | 'A' | 'B'
 export type SessionStatus = 'WAITING' | 'IN_PROGRESS' | 'FINISHED'
+
+export interface BlindTestTeamDTO {
+  id: number
+  name: string
+  score: number
+  position: number
+}
 
 export interface BlindTestTrackDTO {
   id: number
@@ -16,12 +22,9 @@ export interface BlindTestStateDTO {
   currentTrackIndex: number
   totalTracks: number
   playing: boolean
-  handState: HandState
+  raisedTeamId: number | null
   trackRevealed: boolean
-  teamAName: string
-  teamBName: string
-  teamAScore: number
-  teamBScore: number
+  teams: BlindTestTeamDTO[]
   currentTrack: BlindTestTrackDTO | null
   previewUrl: string | null
 }
@@ -31,6 +34,15 @@ export interface BlindTestSetResponse {
   name: string
   createdAt: string
   isPublic: boolean
+}
+
+export interface BlindTestSessionDTO {
+  id: number
+  token: string
+  status: SessionStatus
+  gameSetName: string
+  teams: BlindTestTeamDTO[]
+  createdAt: string
 }
 
 export interface DeezerSearchResult {
@@ -54,5 +66,5 @@ export interface BlindTestAction {
     | 'NEXT_TRACK'
     | 'RAISE_HAND' | 'LOWER_HAND'
     | 'AWARD_CORRECT' | 'AWARD_WRONG'
-  teamA?: boolean
+  teamId?: number
 }

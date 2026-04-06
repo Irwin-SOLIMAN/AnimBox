@@ -1,27 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { blindTestService } from '../services/blindTestService'
-import { gameSessionService } from '../services/gameSessionService'
-import type { BlindTestSetResponse, BlindTestTrackDTO, DeezerSearchResult } from '../types/blindTest'
+import type { BlindTestSetResponse, BlindTestTrackDTO, DeezerSearchResult, BlindTestSessionDTO } from '../types/blindTest'
 
-const BG = 'radial-gradient(ellipse at 50% 20%, #1a3570 0%, #080f22 70%)'
-const GOLD = '#f4b942'
+const BG = 'radial-gradient(ellipse at 50% 20%, #1a0a3d 0%, #080f22 70%)'
 
 export default function BlindTestGameSetsPage() {
   const navigate = useNavigate()
-  const [sets, setSets] = useState<BlindTestSetResponse[]>([])
-  const [selectedSet, setSelectedSet] = useState<BlindTestSetResponse | null>(null)
-  const [tracks, setTracks] = useState<BlindTestTrackDTO[]>([])
-  const [newSetName, setNewSetName] = useState('')
-  const [loading, setLoading] = useState(true)
 
-  // Session creation
-  const [showLaunch, setShowLaunch] = useState(false)
-  const [teamA, setTeamA] = useState('Équipe A')
-  const [teamB, setTeamB] = useState('Équipe B')
+  const [sets, setSets] = useState<BlindTestSetResponse[]>([])
+  const [sessions, setSessions] = useState<BlindTestSessionDTO[]>([])
+  const [expandedSetId, setExpandedSetId] = useState<number | null>(null)
+  const [tracksMap, setTracksMap] = useState<Record<number, BlindTestTrackDTO[]>>({})
+  const [newSetName, setNewSetName] = useState('')
+  const [loadingTracks, setLoadingTracks] = useState<number | null>(null)
+  const [tab, setTab] = useState<'playlists' | 'sessions'>('playlists')
+
+  // Session launch state
+  const [launchSetId, setLaunchSetId] = useState<number | null>(null)
+  const [teamNames, setTeamNames] = useState(['Équipe A', 'Équipe B'])
   const [launching, setLaunching] = useState(false)
 
   // Deezer search
+  const [searchSetId, setSearchSetId] = useState<number | null>(null)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<DeezerSearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -32,40 +33,45 @@ export default function BlindTestGameSetsPage() {
   const [playingId, setPlayingId] = useState<number | null>(null)
 
   useEffect(() => {
-    blindTestService.getSets().then(setSets).finally(() => setLoading(false))
+    blindTestService.getSets().then(setSets)
+    blindTestService.getSessions().then(setSessions)
   }, [])
 
-  const selectSet = async (set: BlindTestSetResponse) => {
-    setSelectedSet(set)
-    const t = await blindTestService.getTracks(set.id)
-    setTracks(t)
-    setShowLaunch(false)
-    setResults([])
-    setQuery('')
+  // Toggle accordion
+  const toggleSet = async (set: BlindTestSetResponse) => {
+    if (expandedSetId === set.id) {
+      setExpandedSetId(null)
+      return
+    }
+    setExpandedSetId(set.id)
+    if (!tracksMap[set.id]) {
+      setLoadingTracks(set.id)
+      const t = await blindTestService.getTracks(set.id)
+      setTracksMap((prev) => ({ ...prev, [set.id]: t }))
+      setLoadingTracks(null)
+    }
   }
 
   const createSet = async () => {
     if (!newSetName.trim()) return
     const s = await blindTestService.createSet(newSetName.trim())
     setSets((prev) => [...prev, s])
+    setTracksMap((prev) => ({ ...prev, [s.id]: [] }))
+    setExpandedSetId(s.id)
     setNewSetName('')
-    selectSet(s)
   }
 
-  const deleteTrack = async (trackId: number) => {
+  const deleteTrack = async (setId: number, trackId: number) => {
     await blindTestService.deleteTrack(trackId)
-    setTracks((prev) => prev.filter((t) => t.id !== trackId))
+    setTracksMap((prev) => ({ ...prev, [setId]: prev[setId].filter((t) => t.id !== trackId) }))
   }
 
   const addFromDeezer = async (r: DeezerSearchResult) => {
-    if (!selectedSet) return
-    const track = await blindTestService.addTrack(selectedSet.id, {
-      title: r.title,
-      artist: r.artist,
-      deezerTrackId: r.id,
-      pointsValue: 1,
+    if (!searchSetId) return
+    const track = await blindTestService.addTrack(searchSetId, {
+      title: r.title, artist: r.artist, deezerTrackId: r.id, pointsValue: 1,
     })
-    setTracks((prev) => [...prev, track])
+    setTracksMap((prev) => ({ ...prev, [searchSetId]: [...(prev[searchSetId] ?? []), track] }))
     setResults((prev) => prev.filter((x) => x.id !== r.id))
   }
 
@@ -75,10 +81,15 @@ export default function BlindTestGameSetsPage() {
     if (!q.trim()) { setResults([]); return }
     searchTimeout.current = setTimeout(async () => {
       setSearching(true)
-      const r = await blindTestService.searchDeezer(q)
-      setResults(r)
+      setResults(await blindTestService.searchDeezer(q))
       setSearching(false)
     }, 500)
+  }
+
+  const openSearch = (setId: number) => {
+    setSearchSetId(searchSetId === setId ? null : setId)
+    setQuery('')
+    setResults([])
   }
 
   const previewTrack = (url: string, id: number) => {
@@ -94,186 +105,289 @@ export default function BlindTestGameSetsPage() {
     }
   }
 
+  const openLaunch = (setId: number) => {
+    setLaunchSetId(launchSetId === setId ? null : setId)
+    setTeamNames(['Équipe A', 'Équipe B'])
+  }
+
+  const addTeam = () => {
+    if (teamNames.length < 6) setTeamNames((p) => [...p, `Équipe ${p.length + 1}`])
+  }
+
+  const removeTeam = (i: number) => {
+    if (teamNames.length > 2) setTeamNames((p) => p.filter((_, idx) => idx !== i))
+  }
+
   const launchSession = async () => {
-    if (!selectedSet) return
+    if (!launchSetId) return
     setLaunching(true)
     try {
-      const session = await gameSessionService.create({
-        gameSetId: selectedSet.id,
-        teamAName: teamA,
-        teamBName: teamB,
-      })
+      const session = await blindTestService.createSession(launchSetId, teamNames)
       navigate(`/blind-test/${session.token}/control`)
     } finally {
       setLaunching(false)
     }
   }
 
+  const deleteSession = async (id: number) => {
+    await blindTestService.deleteSession(id)
+    setSessions((prev) => prev.filter((s) => s.id !== id))
+  }
+
   return (
-    <div className="min-h-screen p-6 pb-16" style={{ background: BG }}>
+    <div className="min-h-screen p-5 pb-16" style={{ background: BG }}>
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} />
 
       <div className="mx-auto max-w-2xl">
-        <button onClick={() => navigate('/games')} className="mb-4 text-sm text-white/50 hover:text-white">
+        <button onClick={() => navigate('/games')} className="mb-4 text-sm text-white/40 hover:text-white">
           ← Retour
         </button>
-        <h1 className="mb-6 text-2xl font-black text-white">
-          🎵 Blind Test — Mes playlists
-        </h1>
+        <h1 className="mb-5 text-2xl font-black text-white">🎵 Blind Test</h1>
 
-        {/* Créer un nouveau set */}
-        <div className="mb-6 flex gap-2">
-          <input
-            value={newSetName}
-            onChange={(e) => setNewSetName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && createSet()}
-            placeholder="Nom de la nouvelle playlist..."
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-white placeholder-white/30 focus:border-yellow-400/60 focus:outline-none"
-          />
-          <button
-            onClick={createSet}
-            className="rounded-xl px-5 py-2 font-bold text-[#0a1628]"
-            style={{ background: `linear-gradient(180deg, #fdd876 0%, ${GOLD} 50%, #c4922e 100%)` }}
-          >
-            +
-          </button>
+        {/* Tabs */}
+        <div className="mb-6 flex gap-2 rounded-xl border border-white/10 bg-white/5 p-1">
+          {(['playlists', 'sessions'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 rounded-lg py-2 text-sm font-bold transition-all
+                ${tab === t ? 'bg-yellow-400 text-[#0a1628]' : 'text-white/50 hover:text-white'}`}
+            >
+              {t === 'playlists' ? '📋 Playlists' : `🎮 Sessions en cours (${sessions.length})`}
+            </button>
+          ))}
         </div>
 
-        {/* Liste des sets */}
-        {loading ? (
-          <p className="text-white/50">Chargement...</p>
-        ) : (
-          <div className="mb-6 flex flex-col gap-2">
-            {sets.map((s) => (
+        {/* ── PLAYLISTS TAB ── */}
+        {tab === 'playlists' && (
+          <>
+            {/* Créer playlist */}
+            <div className="mb-5 flex gap-2">
+              <input
+                value={newSetName}
+                onChange={(e) => setNewSetName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && createSet()}
+                placeholder="Nom de la nouvelle playlist..."
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 focus:border-yellow-400/50 focus:outline-none"
+              />
               <button
-                key={s.id}
-                onClick={() => selectSet(s)}
-                className={`rounded-xl border px-4 py-3 text-left transition-all ${
-                  selectedSet?.id === s.id
-                    ? 'border-yellow-400/60 bg-yellow-400/10 text-white'
-                    : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
-                }`}
+                onClick={createSet}
+                className="rounded-xl px-5 py-2 text-sm font-black text-[#0a1628]"
+                style={{ background: 'linear-gradient(180deg,#fdd876 0%,#f4b942 50%,#c4922e 100%)' }}
               >
-                <span className="font-semibold">{s.name}</span>
-                {s.isPublic && (
-                  <span className="ml-2 rounded-full bg-yellow-400/20 px-2 py-0.5 text-xs text-yellow-300">
-                    Preset
-                  </span>
-                )}
+                + Créer
               </button>
-            ))}
-          </div>
+            </div>
+
+            {/* Liste accordion */}
+            <div className="flex flex-col gap-3">
+              {sets.map((set) => {
+                const isOpen = expandedSetId === set.id
+                const tracks = tracksMap[set.id] ?? []
+                const isLaunching = launchSetId === set.id
+                const isSearching = searchSetId === set.id
+
+                return (
+                  <div key={set.id} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                    {/* Header */}
+                    <button
+                      onClick={() => toggleSet(set)}
+                      className="flex w-full items-center justify-between px-5 py-4 text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={`text-sm transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
+                        <span className="font-semibold text-white">{set.name}</span>
+                        {set.isPublic && (
+                          <span className="rounded-full bg-yellow-400/20 px-2 py-0.5 text-xs text-yellow-300">
+                            Preset
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-white/30">
+                        {tracksMap[set.id] ? `${tracksMap[set.id].length} pistes` : ''}
+                      </span>
+                    </button>
+
+                    {/* Contenu accordéon */}
+                    {isOpen && (
+                      <div className="border-t border-white/10 px-5 pb-5 pt-4">
+                        {loadingTracks === set.id ? (
+                          <p className="text-sm text-white/40">Chargement...</p>
+                        ) : (
+                          <>
+                            {/* Bouton Lancer */}
+                            <button
+                              onClick={() => openLaunch(set.id)}
+                              className="mb-4 w-full rounded-xl py-3 text-sm font-black text-[#0a1628]"
+                              style={{ background: 'linear-gradient(180deg,#fdd876 0%,#f4b942 50%,#c4922e 100%)' }}
+                            >
+                              🎮 {isLaunching ? 'Fermer' : 'Lancer une session'}
+                            </button>
+
+                            {/* Panel lancement inline */}
+                            {isLaunching && (
+                              <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4">
+                                <div className="mb-3 flex items-center justify-between">
+                                  <p className="text-sm font-bold text-yellow-300">Équipes (2 à 6)</p>
+                                  {teamNames.length < 6 && (
+                                    <button
+                                      onClick={addTeam}
+                                      className="text-xs font-bold text-yellow-300 hover:text-yellow-200"
+                                    >
+                                      + Ajouter une équipe
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="mb-3 flex flex-col gap-2">
+                                  {teamNames.map((name, i) => (
+                                    <div key={i} className="flex gap-2">
+                                      <input
+                                        value={name}
+                                        onChange={(e) => setTeamNames((p) => p.map((n, idx) => idx === i ? e.target.value : n))}
+                                        className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none"
+                                      />
+                                      {teamNames.length > 2 && (
+                                        <button
+                                          onClick={() => removeTeam(i)}
+                                          className="px-2 text-white/30 hover:text-red-400"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                <button
+                                  onClick={launchSession}
+                                  disabled={launching}
+                                  className="w-full rounded-xl py-3 font-black text-[#0a1628] disabled:opacity-50"
+                                  style={{ background: 'linear-gradient(180deg,#fdd876 0%,#f4b942 50%,#c4922e 100%)' }}
+                                >
+                                  {launching ? 'Démarrage...' : '▶ Démarrer'}
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Liste pistes */}
+                            <div className="mb-4 flex flex-col gap-2">
+                              {tracks.length === 0 && (
+                                <p className="text-sm text-white/30">Aucune piste — ajoutez-en via Deezer ci-dessous.</p>
+                              )}
+                              {tracks.map((t, i) => (
+                                <div key={t.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5">
+                                  <span className="w-5 shrink-0 text-center text-xs font-bold text-white/30">{i + 1}</span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-semibold text-white">{t.title}</p>
+                                    <p className="truncate text-xs text-white/50">{t.artist}</p>
+                                  </div>
+                                  {!set.isPublic && (
+                                    <button onClick={() => deleteTrack(set.id, t.id)} className="shrink-0 text-white/20 hover:text-red-400">
+                                      ✕
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Recherche Deezer */}
+                            {!set.isPublic && (
+                              <div>
+                                <button
+                                  onClick={() => openSearch(set.id)}
+                                  className="mb-3 text-xs font-bold text-yellow-400/70 hover:text-yellow-300"
+                                >
+                                  {isSearching ? '▲ Masquer la recherche' : '+ Ajouter des pistes via Deezer'}
+                                </button>
+
+                                {isSearching && (
+                                  <div>
+                                    <input
+                                      value={query}
+                                      onChange={(e) => handleSearch(e.target.value)}
+                                      placeholder="Rechercher un titre, artiste..."
+                                      className="mb-3 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 focus:border-yellow-400/50 focus:outline-none"
+                                    />
+                                    {searching && <p className="mb-2 text-xs text-white/40">Recherche...</p>}
+                                    <div className="flex flex-col gap-2">
+                                      {results.map((r) => (
+                                        <div key={r.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                                          <button onClick={() => previewTrack(r.previewUrl, r.id)} className="shrink-0 text-base">
+                                            {playingId === r.id ? '⏸' : '▶'}
+                                          </button>
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-semibold text-white">{r.title}</p>
+                                            <p className="truncate text-xs text-white/50">{r.artist}</p>
+                                          </div>
+                                          <button
+                                            onClick={() => addFromDeezer(r)}
+                                            className="shrink-0 rounded-lg bg-yellow-400/20 px-3 py-1 text-xs font-bold text-yellow-300 hover:bg-yellow-400/30"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
         )}
 
-        {/* Contenu du set sélectionné */}
-        {selectedSet && (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">{selectedSet.name}</h2>
-              <button
-                onClick={() => setShowLaunch(!showLaunch)}
-                className="rounded-xl px-4 py-2 text-sm font-bold text-[#0a1628]"
-                style={{ background: `linear-gradient(180deg, #fdd876 0%, ${GOLD} 50%, #c4922e 100%)` }}
-              >
-                🎮 Lancer
-              </button>
-            </div>
-
-            {/* Panel de lancement */}
-            {showLaunch && (
-              <div className="mb-5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4">
-                <p className="mb-3 text-sm font-bold text-yellow-300">Noms des équipes</p>
-                <div className="mb-3 grid grid-cols-2 gap-3">
-                  <input
-                    value={teamA}
-                    onChange={(e) => setTeamA(e.target.value)}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none"
-                  />
-                  <input
-                    value={teamB}
-                    onChange={(e) => setTeamB(e.target.value)}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none"
-                  />
-                </div>
-                <button
-                  onClick={launchSession}
-                  disabled={launching}
-                  className="w-full rounded-xl py-3 font-black text-[#0a1628] disabled:opacity-50"
-                  style={{ background: `linear-gradient(180deg, #fdd876 0%, ${GOLD} 50%, #c4922e 100%)` }}
-                >
-                  {launching ? 'Lancement...' : '▶ Démarrer la session'}
-                </button>
-              </div>
+        {/* ── SESSIONS TAB ── */}
+        {tab === 'sessions' && (
+          <div className="flex flex-col gap-3">
+            {sessions.length === 0 && (
+              <p className="text-center text-sm text-white/30">Aucune session en cours.</p>
             )}
-
-            {/* Pistes actuelles */}
-            <div className="mb-4 flex flex-col gap-2">
-              {tracks.length === 0 && (
-                <p className="text-sm text-white/30">Aucune piste. Recherchez des sons ci-dessous.</p>
-              )}
-              {tracks.map((t, i) => (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3"
-                >
-                  <span className="w-5 text-center text-sm font-bold text-white/30">{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{t.title}</p>
-                    <p className="truncate text-xs text-white/50">{t.artist}</p>
+            {sessions.map((s) => (
+              <div key={s.id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                <div className="mb-3 flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-white">{s.gameSetName}</p>
+                    <p className="text-xs text-white/40">
+                      {s.status === 'WAITING' ? '⏳ En attente' : '🎵 En cours'}
+                    </p>
                   </div>
-                  {!selectedSet.isPublic && (
-                    <button
-                      onClick={() => deleteTrack(t.id)}
-                      className="text-white/30 hover:text-red-400 transition-colors"
-                    >
-                      ✕
-                    </button>
-                  )}
+                  <button
+                    onClick={() => deleteSession(s.id)}
+                    className="text-xs text-white/30 hover:text-red-400"
+                  >
+                    Supprimer
+                  </button>
                 </div>
-              ))}
-            </div>
-
-            {/* Recherche Deezer */}
-            {!selectedSet.isPublic && (
-              <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/40">
-                  Ajouter via Deezer
-                </p>
-                <input
-                  value={query}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  placeholder="Titre, artiste..."
-                  className="mb-3 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 focus:border-yellow-400/60 focus:outline-none"
-                />
-                {searching && <p className="text-xs text-white/40">Recherche...</p>}
-                <div className="flex flex-col gap-2">
-                  {results.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2"
-                    >
-                      <button
-                        onClick={() => previewTrack(r.previewUrl, r.id)}
-                        className="text-lg"
-                        title="Écouter l'aperçu"
-                      >
-                        {playingId === r.id ? '⏸' : '▶'}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate text-sm font-semibold text-white">{r.title}</p>
-                        <p className="truncate text-xs text-white/50">{r.artist}</p>
-                      </div>
-                      <button
-                        onClick={() => addFromDeezer(r)}
-                        className="shrink-0 rounded-lg bg-yellow-400/20 px-3 py-1 text-xs font-bold text-yellow-300 hover:bg-yellow-400/30"
-                      >
-                        + Ajouter
-                      </button>
-                    </div>
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {s.teams.map((t) => (
+                    <span key={t.id} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white">
+                      {t.name} · {t.score} pts
+                    </span>
                   ))}
                 </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate(`/blind-test/${s.token}/control`)}
+                    className="flex-1 rounded-xl py-2 text-sm font-bold text-[#0a1628]"
+                    style={{ background: 'linear-gradient(180deg,#fdd876 0%,#f4b942 50%,#c4922e 100%)' }}
+                  >
+                    📱 Reprendre contrôle
+                  </button>
+                  <button
+                    onClick={() => navigate(`/blind-test/${s.token}/display`)}
+                    className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-sm font-bold text-white"
+                  >
+                    📺 Affichage
+                  </button>
+                </div>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>

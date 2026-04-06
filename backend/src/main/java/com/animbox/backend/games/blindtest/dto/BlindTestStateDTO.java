@@ -11,17 +11,18 @@ public record BlindTestStateDTO(
         int currentTrackIndex,
         int totalTracks,
         boolean playing,
-        String handState,      // "NONE", "A", "B"
+        Long raisedTeamId,     // null si personne n'a levé la main
         boolean trackRevealed,
-        String teamAName,
-        String teamBName,
-        int teamAScore,
-        int teamBScore,
+        List<BlindTestTeamDTO> teams,
         BlindTestTrackDTO currentTrack,
-        String previewUrl      // fetched from Deezer, null if unavailable
+        String previewUrl
 ) {
-    public static BlindTestStateDTO from(GameSession session, List<BlindTestTrackDTO> tracks,
-                                         boolean playing, String handState, boolean trackRevealed,
+    public static BlindTestStateDTO from(GameSession session,
+                                         List<BlindTestTrackDTO> tracks,
+                                         List<BlindTestTeamDTO> teams,
+                                         boolean playing,
+                                         Long raisedTeamId,
+                                         boolean trackRevealed,
                                          String previewUrl) {
         int idx = session.getCurrentQuestionIndex();
         BlindTestTrackDTO current = (idx < tracks.size()) ? tracks.get(idx) : null;
@@ -32,12 +33,9 @@ public record BlindTestStateDTO(
                 idx,
                 tracks.size(),
                 playing,
-                handState,
+                raisedTeamId,
                 trackRevealed,
-                session.getTeamAName(),
-                session.getTeamBName(),
-                session.getTeamAScore(),
-                session.getTeamBScore(),
+                teams,
                 current,
                 previewUrl
         );
