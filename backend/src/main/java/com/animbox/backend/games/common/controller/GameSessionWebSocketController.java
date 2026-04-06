@@ -27,7 +27,7 @@ public class GameSessionWebSocketController {
     private static final Logger log = LoggerFactory.getLogger(GameSessionWebSocketController.class);
 
     private static final Set<ActionType> FAMILY_FEUD_ACTIONS = Set.of(
-            ActionType.FAULT, ActionType.STEAL, ActionType.END_ROUND
+            ActionType.FAULT, ActionType.STEAL, ActionType.END_ROUND, ActionType.SET_MULTIPLIER
     );
 
     /** sessionId → stompSessionId du commandant actuel */

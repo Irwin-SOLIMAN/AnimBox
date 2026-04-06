@@ -23,6 +23,7 @@ public enum ActionType {
     AWARD_WRONG,    // mauvaise réponse → annule la levée de main
     ADJUST_SCORE,   // Blind Test : ajustement direct des points — payload: teamId + points (peut être négatif)
 
-    // Actions spécifiques Famille en Or — choix d'équipe
-    SET_TEAM        // choisir l'équipe qui commence — payload: teamA (true = équipe A)
+    // Actions spécifiques Famille en Or — choix d'équipe et multiplicateur
+    SET_TEAM,       // choisir l'équipe qui commence — payload: teamA (true = équipe A)
+    SET_MULTIPLIER  // multiplicateur de la manche — payload: points (1, 2 ou 3)
 }

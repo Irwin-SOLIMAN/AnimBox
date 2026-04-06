@@ -71,6 +71,10 @@ public class GameSession extends BaseEntity {
     @Column(nullable = false)
     private boolean stealPhase = false;
 
+    // Multiplicateur de points pour la manche courante (1, 2 ou 3)
+    @Column(nullable = false)
+    private int roundMultiplier = 1;
+
     @Column(unique = true, nullable = false, updatable = false)
     private String token;
 
@@ -120,6 +124,12 @@ public class GameSession extends BaseEntity {
     public void resetRound() {
         this.currentFaults = 0;
         this.stealPhase = false;
+        this.roundMultiplier = 1;
+    }
+
+    // Définit le multiplicateur de la manche (1, 2 ou 3)
+    public void setMultiplier(int multiplier) {
+        this.roundMultiplier = Math.max(1, Math.min(3, multiplier));
     }
 
     // Change l'équipe qui joue (face-off, alternance inter-questions)

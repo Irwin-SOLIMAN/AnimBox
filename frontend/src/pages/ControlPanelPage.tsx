@@ -154,7 +154,40 @@ const ControlPanelPage = () => {
           </div>
           <div className="text-right">
             <span className="text-sm text-white/40">Tour : </span>
-            <span className="font-bold text-ff-gold">{state.roundPoints} pts</span>
+            <span className="font-bold text-ff-gold">
+              {state.roundPoints * state.roundMultiplier} pts
+              {state.roundMultiplier > 1 && (
+                <span className="ml-1 text-xs text-orange-300">×{state.roundMultiplier}</span>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Multiplicateur de manche */}
+      {state.status === 'IN_PROGRESS' && !state.stealPhase && revealedAnswerIds.length === 0 && isCommander && (
+        <div className="mb-4 rounded-xl border border-white/10 bg-ff-card px-4 py-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-white/30">Multiplicateur</p>
+          <div className="grid grid-cols-3 gap-2">
+            {([1, 2, 3] as const).map((m) => {
+              const active = state.roundMultiplier === m
+              return (
+                <button
+                  key={m}
+                  onClick={() => dispatch({ type: 'SET_MULTIPLIER', points: active && m > 1 ? 1 : m })}
+                  className={`rounded-xl border-2 py-2.5 text-base font-black transition-all active:scale-95
+                    ${active
+                      ? m === 1
+                        ? 'border-white/20 bg-white/5 text-white/50'
+                        : 'border-ff-gold bg-ff-gold/20 text-ff-gold ff-glow'
+                      : 'border-white/10 bg-[#0d1835] text-white/30 hover:border-white/20 hover:text-white/60'
+                    }`}
+                >
+                  ×{m}
+                  {active && m > 1 && <span className="block text-[9px] font-normal text-ff-gold/60">cliquer pour annuler</span>}
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
@@ -228,17 +261,10 @@ const ControlPanelPage = () => {
               </OutlineButton>
             </div>
 
-            {state.currentQuestionIndex < state.totalQuestions - 1 ? (
+            {state.currentQuestionIndex < state.totalQuestions - 1 && (
               <OutlineButton onClick={() => dispatch({ type: 'NEXT_QUESTION' })}>
                 Question suivante →
               </OutlineButton>
-            ) : (
-              <button
-                onClick={() => dispatch({ type: 'FINISH' })}
-                className="w-full rounded-2xl border border-red-500/40 bg-transparent py-3 font-bold text-red-400 transition hover:bg-red-900/20"
-              >
-                Terminer la partie
-              </button>
             )}
           </>
         )}
@@ -256,6 +282,16 @@ const ControlPanelPage = () => {
               Réponse incorrecte — {state.teamAPlaying ? state.teamAName : state.teamBName} garde les points
             </button>
           </>
+        )}
+
+        {/* Fin de partie — toujours accessible pendant IN_PROGRESS */}
+        {state.status === 'IN_PROGRESS' && (
+          <button
+            onClick={() => dispatch({ type: 'FINISH' })}
+            className="w-full rounded-2xl border border-red-500/30 bg-transparent py-2.5 text-sm font-bold text-red-400/70 transition hover:border-red-500/60 hover:text-red-400"
+          >
+            Terminer la partie
+          </button>
         )}
 
         {/* FINISHED */}

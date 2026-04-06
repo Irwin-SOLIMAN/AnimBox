@@ -101,6 +101,32 @@ const DisplayPage = () => {
         ))}
       </div>
 
+      {/* ── Manche BONUS indicator ── */}
+      {state.status === 'IN_PROGRESS' && state.roundMultiplier > 1 && (
+        <div
+          className="mb-2 rounded-xl px-4 py-1.5 text-center"
+          style={{
+            background: state.roundMultiplier === 3
+              ? 'linear-gradient(90deg, rgba(239,68,68,0.15) 0%, rgba(244,185,66,0.18) 50%, rgba(239,68,68,0.15) 100%)'
+              : 'linear-gradient(90deg, rgba(251,146,60,0.12) 0%, rgba(244,185,66,0.18) 50%, rgba(251,146,60,0.12) 100%)',
+            border: state.roundMultiplier === 3 ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(244,185,66,0.35)',
+          }}
+        >
+          <span
+            className="text-lg font-black uppercase tracking-[0.3em]"
+            style={{
+              color: state.roundMultiplier === 3 ? '#ff6b6b' : '#f4b942',
+              textShadow: state.roundMultiplier === 3
+                ? '0 0 16px rgba(239,68,68,0.6)'
+                : '0 0 16px rgba(244,185,66,0.55)',
+              animation: 'ff-bonus-pulse 2s ease-in-out infinite',
+            }}
+          >
+            ✦ MANCHE BONUS ×{state.roundMultiplier} ✦
+          </span>
+        </div>
+      )}
+
       {/* ── Fautes + Points + Phase de vol (même ligne) ── */}
       {state.status === 'IN_PROGRESS' && (
         <div className="mb-2 flex items-center gap-3">
@@ -130,7 +156,9 @@ const DisplayPage = () => {
           {/* Points du tour */}
           <div className="ml-auto rounded-xl border border-white/10 bg-ff-card px-5 py-2 text-right">
             <span className="text-sm text-white/40">Tour </span>
-            <span className="text-3xl font-black text-ff-gold">{state.roundPoints}</span>
+            <span className="text-3xl font-black text-ff-gold">
+              {state.roundPoints * state.roundMultiplier}
+            </span>
           </div>
         </div>
       )}

@@ -32,6 +32,7 @@ public class FamilyFeudGameService {
             case FAULT -> addFault(session);
             case STEAL -> steal(session, action.answerId());
             case END_ROUND -> endRound(session, action.teamA());
+            case SET_MULTIPLIER -> setMultiplier(session, action.points());
             default -> throw new IllegalArgumentException("Action non gérée par FamilyFeudGameService : " + action.type());
         };
     }
@@ -66,11 +67,11 @@ public class FamilyFeudGameService {
             session.revealAnswer(answerId);
         }
 
-        int points = computeRoundPoints(session, currentQuestion);
+        int points = computeRoundPoints(session, currentQuestion) * session.getRoundMultiplier();
 
         if (isValidSteal) {
             // L'équipe adverse (pas teamAPlaying) remporte TOUS les points du tour
-            // (ceux révélés par A + la réponse volée par B)
+            // (ceux révélés par A + la réponse volée par B), avec multiplicateur
             session.addScore(!session.isTeamAPlaying(), points);
         } else {
             // Mauvaise réponse : l'équipe qui jouait conserve les points déjà accumulés
@@ -89,10 +90,20 @@ public class FamilyFeudGameService {
         if (teamA == null) throw new IllegalArgumentException("teamA requis pour END_ROUND");
 
         FamilyFeudQuestion currentQuestion = getCurrentQuestion(session);
-        int points = computeRoundPoints(session, currentQuestion);
+        int points = computeRoundPoints(session, currentQuestion) * session.getRoundMultiplier();
 
         session.addScore(teamA, points);
         session.resetRound();
+        return GameStateDTO.from(session);
+    }
+
+    /**
+     * Définit le multiplicateur de la manche (1, 2 ou 3).
+     * Seulement si aucune réponse n'a encore été révélée pour la question courante.
+     */
+    private GameStateDTO setMultiplier(GameSession session, Integer multiplier) {
+        if (multiplier == null) throw new IllegalArgumentException("points requis pour SET_MULTIPLIER");
+        session.setMultiplier(multiplier);
         return GameStateDTO.from(session);
     }
 

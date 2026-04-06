@@ -28,7 +28,8 @@ public record GameStateDTO(
         int currentFaults,
         boolean teamAPlaying,
         boolean stealPhase,
-        int roundPoints  // total des points révélés sur la question en cours
+        int roundPoints,      // total des points révélés sur la question en cours (non multiplié)
+        int roundMultiplier   // multiplicateur de la manche (1, 2 ou 3)
 ) {
 
     public record QuestionDTO(
@@ -80,7 +81,8 @@ public record GameStateDTO(
                 session.getCurrentFaults(),
                 session.isTeamAPlaying(),
                 session.isStealPhase(),
-                roundPoints
+                roundPoints,
+                session.getRoundMultiplier()
         );
     }
 }

@@ -10,6 +10,7 @@ export type ActionType =
   | 'STEAL'
   | 'END_ROUND'
   | 'SET_TEAM'
+  | 'SET_MULTIPLIER'
 
 export interface ActionDTO {
   type: ActionType
@@ -38,6 +39,7 @@ export interface GameStateDTO {
   teamAPlaying: boolean
   stealPhase: boolean
   roundPoints: number
+  roundMultiplier: number
 }
 
 export interface GameSessionResponse {
