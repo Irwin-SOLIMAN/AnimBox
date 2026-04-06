@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { blindTestService } from '../services/blindTestService'
-import type { BlindTestStateDTO, BlindTestTeamDTO } from '../types/blindTest'
+import type { BlindTestStateDTO } from '../types/blindTest'
 import useWebSocket from '../hooks/useWebSocket'
 
 const BG = 'radial-gradient(ellipse at 50% 20%, #1a0a3d 0%, #080f22 70%)'
@@ -55,7 +55,6 @@ export default function BlindTestDisplayPage() {
   )
 
   const maxScore = Math.max(...state.teams.map((t) => t.score), 1)
-  const raisedTeam = state.teams.find((t) => t.id === state.raisedTeamId) ?? null
 
   return (
     <div className="flex min-h-screen flex-col" style={{ background: BG }}>
