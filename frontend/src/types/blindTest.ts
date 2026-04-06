@@ -66,5 +66,7 @@ export interface BlindTestAction {
     | 'NEXT_TRACK'
     | 'RAISE_HAND' | 'LOWER_HAND'
     | 'AWARD_CORRECT' | 'AWARD_WRONG'
+    | 'ADJUST_SCORE'
   teamId?: number
+  points?: number
 }

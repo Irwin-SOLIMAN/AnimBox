@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { QRCodeSVG } from 'qrcode.react'
 import { blindTestService } from '../services/blindTestService'
 import type { BlindTestStateDTO, BlindTestAction, BlindTestTeamDTO } from '../types/blindTest'
 import useWebSocket from '../hooks/useWebSocket'
@@ -17,10 +18,14 @@ export default function BlindTestControlPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [controlStatus, setControlStatus] = useState<ControlStatus>('pending')
+  const [showQR, setShowQR] = useState(false)
 
   const clientId = useRef(crypto.randomUUID())
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const lastPreviewUrl = useRef<string | null>(null)
+
+  const controlUrl = token ? `${window.location.origin}/blind-test/${token}/control` : ''
+  const displayUrl = token ? `${window.location.origin}/blind-test/${token}/display` : ''
 
   useEffect(() => {
     if (!token) return
@@ -87,30 +92,47 @@ export default function BlindTestControlPage() {
     </div>
   )
 
-  const raisedTeam = state.teams.find((t) => t.id === state.raisedTeamId) ?? null
+  const cols = state.teams.length <= 3 ? `grid-cols-${state.teams.length}` : 'grid-cols-3'
 
   return (
-    <div className="min-h-screen p-4 pb-10" style={{ background: BG }}>
+    <div className="min-h-screen p-4 pb-12" style={{ background: BG }}>
       <audio ref={audioRef} onEnded={() => dispatch({ type: 'PAUSE' })} />
 
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
         <button onClick={() => navigate('/games')} className="text-sm text-white/40 hover:text-white">← Quitter</button>
         <p className="text-sm font-black uppercase tracking-wider text-yellow-400">🎵 Blind Test</p>
-        <span className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-yellow-400' : 'bg-red-400'}`} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowQR(!showQR)}
+            className="rounded-lg border border-white/20 bg-white/5 px-2 py-1 text-xs font-bold text-white/60 hover:bg-white/10"
+          >
+            QR
+          </button>
+          <span className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-yellow-400' : 'bg-red-400'}`} />
+        </div>
       </div>
 
-      {/* Scores équipes (admin voit les vrais points) */}
-      <div className={`mb-4 grid gap-2 ${state.teams.length <= 3 ? 'grid-cols-' + state.teams.length : 'grid-cols-3'}`}>
-        {state.teams.map((team) => (
-          <TeamCard
-            key={team.id}
-            team={team}
-            highlighted={team.id === state.raisedTeamId}
-            showScore
-          />
-        ))}
-      </div>
+      {/* QR panel */}
+      {showQR && (
+        <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-white/40">Scanner pour contrôler</p>
+          <div className="inline-block rounded-xl bg-white p-3">
+            <QRCodeSVG value={controlUrl} size={160} />
+          </div>
+          <p className="mt-2 text-xs text-white/30 break-all">{controlUrl}</p>
+          <div className="mt-3 flex gap-2 justify-center">
+            <a
+              href={displayUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10"
+            >
+              📺 Ouvrir l'affichage TV
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Piste courante */}
       <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -119,9 +141,8 @@ export default function BlindTestControlPage() {
         </p>
         {state.currentTrack ? (
           <>
-            <p className="text-lg font-black text-white">{state.currentTrack.title}</p>
-            <p className="text-sm text-white/60">{state.currentTrack.artist}</p>
-            <p className="mt-1 text-xs text-yellow-400/60">{state.currentTrack.pointsValue} pt{state.currentTrack.pointsValue > 1 ? 's' : ''}</p>
+            <p className="text-base font-black text-white">{state.currentTrack.title}</p>
+            <p className="text-sm text-white/50">{state.currentTrack.artist}</p>
           </>
         ) : (
           <p className="text-white/30">Aucune piste</p>
@@ -149,64 +170,45 @@ export default function BlindTestControlPage() {
         </div>
       )}
 
-      {/* Levée de main — une touche par équipe */}
-      {state.status === 'IN_PROGRESS' && !raisedTeam && (
+      {/* Scores + boutons +/- */}
+      {state.status === 'IN_PROGRESS' && (
         <div className="mb-4">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/30">Qui lève la main ?</p>
-          <div className={`grid gap-2 ${state.teams.length <= 3 ? 'grid-cols-' + state.teams.length : 'grid-cols-3'}`}>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wide text-white/30">Scores</p>
+          <div className={`grid gap-2 ${cols}`}>
             {state.teams.map((team) => (
-              <button
+              <TeamScoreCard
                 key={team.id}
-                onClick={() => dispatch({ type: 'RAISE_HAND', teamId: team.id })}
-                className="rounded-xl border border-white/20 bg-white/5 py-3 text-sm font-bold text-white hover:bg-white/10 active:scale-95"
-              >
-                🙋 {team.name}
-              </button>
+                team={team}
+                onAdjust={(delta) => dispatch({ type: 'ADJUST_SCORE', teamId: team.id, points: delta })}
+                disabled={!isCommander}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* Bonne / Mauvaise réponse */}
-      {state.status === 'IN_PROGRESS' && raisedTeam && (
-        <div className="mb-4 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4">
-          <p className="mb-3 text-center font-bold text-yellow-300">
-            🙋 <span className="text-white">{raisedTeam.name}</span> a levé la main !
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => dispatch({ type: 'AWARD_CORRECT' })}
-              className="rounded-2xl bg-green-600/80 py-4 text-2xl font-black text-white hover:bg-green-500 active:scale-95"
-            >
-              ✓
-            </button>
-            <button
-              onClick={() => dispatch({ type: 'AWARD_WRONG' })}
-              className="rounded-2xl bg-red-700/80 py-4 text-2xl font-black text-white hover:bg-red-600 active:scale-95"
-            >
-              ✗
-            </button>
-          </div>
-          <button
-            onClick={() => dispatch({ type: 'LOWER_HAND' })}
-            className="mt-2 w-full text-xs text-white/30 hover:text-white/60"
-          >
-            Annuler
-          </button>
-        </div>
-      )}
-
       {/* Actions de session */}
       {state.status === 'WAITING' && (
-        <GoldButton onClick={() => dispatch({ type: 'START' })}>
-          Démarrer la partie
-        </GoldButton>
+        <>
+          {/* QR code prominent au démarrage */}
+          {!showQR && (
+            <div className="mb-4 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-4 text-center">
+              <p className="mb-3 text-sm font-bold text-yellow-300">Scanner pour contrôler depuis un téléphone</p>
+              <div className="inline-block rounded-xl bg-white p-3">
+                <QRCodeSVG value={controlUrl} size={140} />
+              </div>
+            </div>
+          )}
+          <GoldButton onClick={() => dispatch({ type: 'START' })}>
+            Démarrer la partie
+          </GoldButton>
+        </>
       )}
 
-      {state.status === 'IN_PROGRESS' && state.currentTrackIndex >= state.totalTracks - 1 && !raisedTeam && (
+      {state.status === 'IN_PROGRESS' && state.currentTrackIndex >= state.totalTracks - 1 && (
         <button
           onClick={() => dispatch({ type: 'FINISH' })}
-          className="w-full rounded-2xl border border-red-500/40 bg-transparent py-3 font-bold text-red-400 hover:bg-red-900/20"
+          className="mt-3 w-full rounded-2xl border border-red-500/40 bg-transparent py-3 font-bold text-red-400 hover:bg-red-900/20"
         >
           Terminer la partie
         </button>
@@ -218,7 +220,18 @@ export default function BlindTestControlPage() {
           {(() => {
             const winner = [...state.teams].sort((a, b) => b.score - a.score)[0]
             const tied = state.teams.filter(t => t.score === winner.score).length > 1
-            return <p className="mb-5 text-sm text-white/60">{tied ? 'Égalité !' : `${winner.name} gagne !`}</p>
+            return (
+              <>
+                <p className="mb-1 text-sm text-white/60">{tied ? 'Égalité !' : `${winner.name} gagne !`}</p>
+                <div className="mb-5 flex flex-col gap-1">
+                  {[...state.teams].sort((a, b) => b.score - a.score).map((t, i) => (
+                    <p key={t.id} className={`text-sm ${i === 0 && !tied ? 'font-bold text-yellow-300' : 'text-white/50'}`}>
+                      {i + 1}. {t.name} — {t.score} pts
+                    </p>
+                  ))}
+                </div>
+              </>
+            )
           })()}
           <GoldButton onClick={() => navigate('/games/blind-test/game-sets')}>
             Retour aux playlists
@@ -229,16 +242,51 @@ export default function BlindTestControlPage() {
   )
 }
 
-function TeamCard({ team, highlighted, showScore }: { team: BlindTestTeamDTO; highlighted: boolean; showScore: boolean }) {
+function TeamScoreCard({
+  team,
+  onAdjust,
+  disabled,
+}: {
+  team: BlindTestTeamDTO
+  onAdjust: (delta: number) => void
+  disabled: boolean
+}) {
   return (
-    <div className={`rounded-xl border-2 p-3 text-center transition-all
-      ${highlighted ? 'border-yellow-400 bg-yellow-400/10' : 'border-white/10 bg-white/5'}`}>
-      <p className="truncate text-xs font-semibold text-white">{team.name}</p>
-      {showScore && (
-        <p className={`text-2xl font-black ${highlighted ? 'text-yellow-400' : 'text-white/70'}`}>
-          {team.score}
-        </p>
-      )}
+    <div className="rounded-xl border border-white/10 bg-white/5 p-2 text-center">
+      <p className="mb-1 truncate text-xs font-semibold text-white">{team.name}</p>
+      <p className="mb-2 text-2xl font-black text-yellow-400">{team.score}</p>
+      <div className="flex gap-1">
+        <button
+          onClick={() => onAdjust(-1)}
+          disabled={disabled || team.score <= 0}
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 py-1.5 text-sm font-bold text-white/60 hover:bg-red-900/30 hover:text-red-300 disabled:opacity-30 transition"
+        >
+          −
+        </button>
+        <button
+          onClick={() => onAdjust(1)}
+          disabled={disabled}
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 py-1.5 text-sm font-bold text-white/60 hover:bg-green-900/30 hover:text-green-300 disabled:opacity-30 transition"
+        >
+          +
+        </button>
+      </div>
+      <div className="mt-1 flex gap-1">
+        <button
+          onClick={() => onAdjust(-2)}
+          disabled={disabled || team.score < 2}
+          className="flex-1 rounded-lg py-1 text-xs text-white/30 hover:text-red-300 disabled:opacity-20 transition"
+        >
+          −2
+        </button>
+        <button
+          onClick={() => onAdjust(2)}
+          disabled={disabled}
+          className="flex-1 rounded-lg py-1 text-xs text-white/30 hover:text-green-300 disabled:opacity-20 transition"
+        >
+          +2
+        </button>
+      </div>
     </div>
   )
 }

@@ -9,6 +9,7 @@ export type ActionType =
   | 'FAULT'
   | 'STEAL'
   | 'END_ROUND'
+  | 'SET_TEAM'
 
 export interface ActionDTO {
   type: ActionType

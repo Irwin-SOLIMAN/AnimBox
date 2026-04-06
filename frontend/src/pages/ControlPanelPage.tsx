@@ -108,29 +108,37 @@ const ControlPanelPage = () => {
         />
       </div>
 
-      {/* Scores */}
+      {/* Scores + choix équipe qui joue */}
       <div className="mb-4 grid grid-cols-2 gap-3">
         {(
           [
-            ['A', state.teamAName, state.teamAScore, state.teamAPlaying],
-            ['B', state.teamBName, state.teamBScore, !state.teamAPlaying],
+            ['A', state.teamAName, state.teamAScore, state.teamAPlaying, true],
+            ['B', state.teamBName, state.teamBScore, !state.teamAPlaying, false],
           ] as const
-        ).map(([key, name, score, playing]) => (
+        ).map(([key, name, score, playing, isTeamA]) => (
           <div
             key={key}
-            className={`rounded-2xl border-2 p-4 text-center transition-all duration-300
+            className={`rounded-2xl border-2 p-3 text-center transition-all duration-300
               ${playing && state.status === 'IN_PROGRESS'
                 ? 'border-ff-gold bg-ff-card-mid ff-glow'
                 : 'border-white/10 bg-ff-card'
               }`}
           >
-            <p className="text-xs font-bold uppercase tracking-wide text-ff-gold/60">
-              {playing && state.status === 'IN_PROGRESS' ? '🎯 joue' : '\u00a0'}
-            </p>
             <p className="truncate font-bold text-white">{name}</p>
             <p className={`text-3xl font-extrabold ${playing && state.status === 'IN_PROGRESS' ? 'text-ff-gold' : 'text-white/70'}`}>
               {score}
             </p>
+            {state.status === 'IN_PROGRESS' && !state.stealPhase && !playing && isCommander && (
+              <button
+                onClick={() => dispatch({ type: 'SET_TEAM', teamA: isTeamA })}
+                className="mt-1.5 w-full rounded-lg border border-ff-gold/30 py-1 text-xs font-bold text-ff-gold/60 hover:bg-ff-gold/10 transition"
+              >
+                🎯 Donner la main
+              </button>
+            )}
+            {playing && state.status === 'IN_PROGRESS' && (
+              <p className="mt-1 text-xs font-bold text-ff-gold/70">🎯 joue</p>
+            )}
           </div>
         ))}
       </div>
@@ -181,7 +189,8 @@ const ControlPanelPage = () => {
                 >
                   <span className="mr-2 font-bold text-ff-gold/70">{answer.rank}.</span>
                   <span className="flex-1 text-left">
-                    {isStealTarget ? 'Cliquer pour voler' : answer.text}
+                    {answer.text}
+                    {isStealTarget && <span className="ml-2 text-xs font-normal text-orange-300/70">(cliquer pour voler)</span>}
                   </span>
                   <span className="ml-2 font-bold text-ff-gold">{answer.score} pts</span>
                 </button>

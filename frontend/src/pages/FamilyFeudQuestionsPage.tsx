@@ -84,6 +84,21 @@ const FamilyFeudQuestionsPage = () => {
     setFormAnswers((prev) => prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)))
   }
 
+  // Score helpers
+  const scoreTotal = formAnswers.reduce((sum, a) => sum + (Number(a.score) || 0), 0)
+  const remaining = 100 - scoreTotal
+
+  const scoreError = (index: number): string | null => {
+    const val = Number(formAnswers[index].score)
+    if (!formAnswers[index].score) return null
+    if (isNaN(val) || val <= 0) return 'Score invalide'
+    if (index > 0) {
+      const prev = Number(formAnswers[index - 1].score)
+      if (prev > 0 && val > prev) return `Doit être ≤ ${prev}`
+    }
+    return null
+  }
+
   const addAnswer = () => {
     if (formAnswers.length < MAX_ANSWERS) {
       setFormAnswers((prev) => [...prev, EMPTY_ANSWER])
@@ -113,6 +128,17 @@ const FamilyFeudQuestionsPage = () => {
     if (answers.some((a) => isNaN(a.score) || a.score <= 0)) {
       setFormError('Tous les scores doivent être des nombres positifs')
       return
+    }
+    const total = answers.reduce((s, a) => s + a.score, 0)
+    if (total !== 100) {
+      setFormError(`Le total des scores doit être exactement 100 (actuellement : ${total})`)
+      return
+    }
+    for (let i = 1; i < answers.length; i++) {
+      if (answers[i].score > answers[i - 1].score) {
+        setFormError(`Réponse ${i + 1} : le score (${answers[i].score}) doit être ≤ au précédent (${answers[i - 1].score})`)
+        return
+      }
     }
 
     setFormLoading(true)
@@ -204,42 +230,61 @@ const FamilyFeudQuestionsPage = () => {
           </div>
 
           {/* Réponses */}
-          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-white/30">
-            Réponses ({formAnswers.length}/{MAX_ANSWERS}) — du plus au moins fréquent
-          </p>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-bold uppercase tracking-wider text-white/30">
+              Réponses ({formAnswers.length}/{MAX_ANSWERS}) — du plus au moins fréquent
+            </p>
+            <span className={`text-xs font-bold tabular-nums ${
+              scoreTotal === 100 ? 'text-green-400' : scoreTotal > 100 ? 'text-red-400' : 'text-white/40'
+            }`}>
+              {scoreTotal}/100 pts
+              {scoreTotal < 100 && scoreTotal > 0 && (
+                <span className="ml-1 text-white/30">(manque {remaining})</span>
+              )}
+            </span>
+          </div>
           <div className="mb-3 flex flex-col gap-2">
-            {formAnswers.map((answer, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-6 shrink-0 text-center text-sm font-bold text-[#f4b942]">
-                  {i + 1}
-                </span>
-                <input
-                  type="text"
-                  placeholder="Réponse"
-                  value={answer.text}
-                  onChange={(e) => updateAnswer(i, 'text', e.target.value)}
-                  required
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50"
-                />
-                <input
-                  type="number"
-                  placeholder="Pts"
-                  value={answer.score}
-                  onChange={(e) => updateAnswer(i, 'score', e.target.value)}
-                  required
-                  min={1}
-                  className="w-20 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeAnswer(i)}
-                  disabled={formAnswers.length <= MIN_ANSWERS}
-                  className="text-white/20 hover:text-red-400 transition disabled:opacity-20"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
+            {formAnswers.map((answer, i) => {
+              const err = scoreError(i)
+              return (
+                <div key={i} className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-6 shrink-0 text-center text-sm font-bold text-[#f4b942]">
+                      {i + 1}
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Réponse"
+                      value={answer.text}
+                      onChange={(e) => updateAnswer(i, 'text', e.target.value)}
+                      required
+                      className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Pts"
+                      value={answer.score}
+                      onChange={(e) => updateAnswer(i, 'score', e.target.value)}
+                      required
+                      min={1}
+                      max={100}
+                      className={`w-20 rounded-xl border bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50 ${
+                        err ? 'border-red-500/60' : 'border-white/10'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAnswer(i)}
+                      disabled={formAnswers.length <= MIN_ANSWERS}
+                      className="text-white/20 hover:text-red-400 transition disabled:opacity-20"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {err && <p className="ml-8 text-xs text-red-400">{err}</p>}
+                </div>
+              )
+            })}
           </div>
 
           {formAnswers.length < MAX_ANSWERS && (

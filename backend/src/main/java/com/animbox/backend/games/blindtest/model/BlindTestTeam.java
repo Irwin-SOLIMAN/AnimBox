@@ -35,4 +35,8 @@ public class BlindTestTeam extends BaseEntity {
     public void addScore(int points) {
         this.score += points;
     }
+
+    public void setScore(int score) {
+        this.score = Math.max(0, score);
+    }
 }

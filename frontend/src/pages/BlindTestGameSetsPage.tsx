@@ -59,6 +59,10 @@ export default function BlindTestGameSetsPage() {
     setTracksMap((prev) => ({ ...prev, [s.id]: [] }))
     setExpandedSetId(s.id)
     setNewSetName('')
+    // Scroll to new set after render
+    setTimeout(() => {
+      document.getElementById(`set-${s.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   const deleteTrack = async (setId: number, trackId: number) => {
@@ -111,7 +115,7 @@ export default function BlindTestGameSetsPage() {
   }
 
   const addTeam = () => {
-    if (teamNames.length < 6) setTeamNames((p) => [...p, `Équipe ${p.length + 1}`])
+    if (teamNames.length < 20) setTeamNames((p) => [...p, `Équipe ${p.length + 1}`])
   }
 
   const removeTeam = (i: number) => {
@@ -188,7 +192,7 @@ export default function BlindTestGameSetsPage() {
                 const isSearching = searchSetId === set.id
 
                 return (
-                  <div key={set.id} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                  <div key={set.id} id={`set-${set.id}`} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
                     {/* Header */}
                     <button
                       onClick={() => toggleSet(set)}
@@ -228,7 +232,7 @@ export default function BlindTestGameSetsPage() {
                             {isLaunching && (
                               <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4">
                                 <div className="mb-3 flex items-center justify-between">
-                                  <p className="text-sm font-bold text-yellow-300">Équipes (2 à 6)</p>
+                                  <p className="text-sm font-bold text-yellow-300">Équipes (2+)</p>
                                   {teamNames.length < 6 && (
                                     <button
                                       onClick={addTeam}

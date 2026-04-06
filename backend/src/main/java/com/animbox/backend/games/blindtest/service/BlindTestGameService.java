@@ -80,6 +80,20 @@ public class BlindTestGameService {
             }
 
             case AWARD_WRONG -> state.withRaisedTeam(null);
+
+            case ADJUST_SCORE -> {
+                Long teamId = action.teamId();
+                Integer delta = action.points();
+                if (teamId != null && delta != null) {
+                    BlindTestTeam team = teamRepository.findById(teamId)
+                            .orElseThrow(() -> new NoSuchElementException("Team introuvable: " + teamId));
+                    int newScore = Math.max(0, team.getScore() + delta);
+                    team.setScore(newScore);
+                    teamRepository.save(team);
+                }
+                yield state;
+            }
+
             case FINISH      -> { session.finish(); yield state.withPlaying(false); }
             default          -> state;
         };

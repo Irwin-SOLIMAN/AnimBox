@@ -3,7 +3,6 @@ package com.animbox.backend.common;
 import com.animbox.backend.auth.model.Role;
 import com.animbox.backend.auth.model.User;
 import com.animbox.backend.auth.repository.UserRepository;
-import com.animbox.backend.games.blindtest.model.BlindTestTrack;
 import com.animbox.backend.games.blindtest.repository.BlindTestTrackRepository;
 import com.animbox.backend.games.common.model.GameSet;
 import com.animbox.backend.games.common.model.GameType;
@@ -61,17 +60,18 @@ public class DataInitializer implements ApplicationRunner {
             seedPresets(familyFeudType, system);
         }
 
-        GameType blindTestType = seedGameType(
+        seedGameType(
                 "BLIND_TEST",
                 "Blind Test",
                 "Devinez la chanson avant tout le monde !",
-                6
+                20
         );
 
-        if (blindTestTrackRepository.count() == 0) {
-            User system = getOrCreateSystemUser();
-            seedBlindTestPresets(blindTestType, system);
-        }
+        // Nettoyage des pistes presets Blind Test (IDs Deezer incorrects)
+        // Les animateurs peuvent ajouter leurs propres pistes via la recherche Deezer
+        gameSetRepository.findAll().stream()
+                .filter(gs -> gs.isPublic() && "BLIND_TEST".equals(gs.getGameType().getCode()))
+                .forEach(gs -> blindTestTrackRepository.deleteAllByGameSet_Id(gs.getId()));
     }
 
     private User getOrCreateSystemUser() {
@@ -224,103 +224,4 @@ public class DataInitializer implements ApplicationRunner {
         );
     }
 
-    // ── Blind Test presets ────────────────────────────────────────────────────
-
-    private record BtTrack(String title, String artist, Long deezerTrackId) {}
-
-    private BtTrack bt(String title, String artist, Long deezerTrackId) {
-        return new BtTrack(title, artist, deezerTrackId);
-    }
-
-    private void createBlindTestSet(String name, GameType type, User owner, List<BtTrack> tracks) {
-        GameSet gs = new GameSet(name, type, owner, true);
-        gameSetRepository.save(gs);
-        for (int i = 0; i < tracks.size(); i++) {
-            BtTrack t = tracks.get(i);
-            blindTestTrackRepository.save(new BlindTestTrack(t.title(), t.artist(), t.deezerTrackId(), gs, i));
-        }
-    }
-
-    private void seedBlindTestPresets(GameType type, User owner) {
-        createBlindTestSet("Hits Français 80s", type, owner, List.of(
-            bt("Joe le taxi", "Vanessa Paradis", 1043814L),
-            bt("Voyage Voyage", "Desireless", 3127026L),
-            bt("Femme libérée", "Cookie Dingler", 137113684L),
-            bt("Alexandrie Alexandra", "Claude François", 3138596L),
-            bt("L'été indien", "Joe Dassin", 640898L),
-            bt("La groupie du pianiste", "Michel Berger", 3129884L)
-        ));
-        createBlindTestSet("Hits Français 90s", type, owner, List.of(
-            bt("Désenchantée", "Mylène Farmer", 3131752L),
-            bt("Foule sentimentale", "Alain Souchon", 8942898L),
-            bt("La Tribu de Dana", "Manau", 77459572L),
-            bt("Freed from desire", "Gala", 1021958L),
-            bt("Les yeux de la mama", "Les Inconnus", 3126192L),
-            bt("Dis-moi que tu m'aimes", "M. Pokora", 3136256L)
-        ));
-        createBlindTestSet("Pop Internationale 2000s", type, owner, List.of(
-            bt("Toxic", "Britney Spears", 916424L),
-            bt("Beautiful Day", "U2", 1107322L),
-            bt("Crazy in Love", "Beyoncé", 916308L),
-            bt("Boulevard of Broken Dreams", "Green Day", 1370977L),
-            bt("Numb", "Linkin Park", 2309717L),
-            bt("Hey Ya!", "OutKast", 2642657L)
-        ));
-        createBlindTestSet("Rock Classique", type, owner, List.of(
-            bt("Smells Like Teen Spirit", "Nirvana", 916340L),
-            bt("Sweet Child O' Mine", "Guns N' Roses", 916374L),
-            bt("Eye of the Tiger", "Survivor", 916442L),
-            bt("Hotel California", "Eagles", 2096054L),
-            bt("We Will Rock You", "Queen", 68193658L),
-            bt("Highway to Hell", "AC/DC", 13363948L)
-        ));
-        createBlindTestSet("Hip-Hop Français", type, owner, List.of(
-            bt("Alors on danse", "Stromae", 3125854L),
-            bt("Papaoutai", "Stromae", 67155742L),
-            bt("Djadja", "Aya Nakamura", 655484422L),
-            bt("Tout s'enchaîne", "Orelsan", 558917632L),
-            bt("Bloqué", "Soolking", 709625272L),
-            bt("Juste pour voir", "SCH", 584606602L)
-        ));
-        createBlindTestSet("Disney en Français", type, owner, List.of(
-            bt("Libérée, Délivrée", "La Reine des Neiges", 783714452L),
-            bt("Je veux y croire", "La Reine des Neiges", 775779052L),
-            bt("Hakuna Matata", "Le Roi Lion", 1117218202L),
-            bt("Le roi est mort ce soir", "Le Roi Lion", 1117236182L),
-            bt("Je ferai de toi un homme", "Mulan", 916320L),
-            bt("Sous l'océan", "La Petite Sirène", 916316L)
-        ));
-        createBlindTestSet("Bandes Originales de Films", type, owner, List.of(
-            bt("My Heart Will Go On", "Céline Dion", 916280L),
-            bt("Lose Yourself", "Eminem", 916342L),
-            bt("Let It Go", "Idina Menzel", 784468352L),
-            bt("Shallow", "Lady Gaga & Bradley Cooper", 1088654742L),
-            bt("Don't You (Forget About Me)", "Simple Minds", 916434L),
-            bt("Eye of the Tiger", "Survivor", 916442L)
-        ));
-        createBlindTestSet("Electro / Dance", type, owner, List.of(
-            bt("Get Lucky", "Daft Punk ft. Pharrell Williams", 67238735L),
-            bt("Levels", "Avicii", 915930L),
-            bt("Animals", "Martin Garrix", 64735684L),
-            bt("Titanium", "David Guetta ft. Sia", 20104L),
-            bt("Wake Me Up", "Avicii", 64809594L),
-            bt("Lean On", "Major Lazer", 110162862L)
-        ));
-        createBlindTestSet("Variété Française Intemporelle", type, owner, List.of(
-            bt("La Vie en Rose", "Édith Piaf", 1039063L),
-            bt("Ne me quitte pas", "Jacques Brel", 2888962L),
-            bt("La bohème", "Charles Aznavour", 916248L),
-            bt("Aux Champs-Élysées", "Joe Dassin", 640924L),
-            bt("L'Aziza", "Daniel Balavoine", 3136178L),
-            bt("Je te promets", "Johnny Hallyday", 3116596L)
-        ));
-        createBlindTestSet("Hits 2020s", type, owner, List.of(
-            bt("Blinding Lights", "The Weeknd", 916350L),
-            bt("Levitating", "Dua Lipa", 1279024882L),
-            bt("drivers license", "Olivia Rodrigo", 1399556802L),
-            bt("Stay", "The Kid LAROI & Justin Bieber", 1504618212L),
-            bt("As It Was", "Harry Styles", 1684523202L),
-            bt("Flowers", "Miley Cyrus", 2058889372L)
-        ));
-    }
 }

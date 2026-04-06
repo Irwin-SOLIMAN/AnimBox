@@ -95,10 +95,18 @@ public class GameSessionService {
 
         switch (action.type()) {
             case START -> session.start();
-            case NEXT_QUESTION -> session.nextQuestion();
+            case NEXT_QUESTION -> {
+                session.nextQuestion();
+                // Après changement de question, l'équipe qui joue reste inchangée
+                // (l'animateur peut utiliser SET_TEAM pour choisir qui commence)
+            }
             case REVEAL_ANSWER -> session.revealAnswer(action.answerId());
             case ADD_SCORE -> session.addScore(action.teamA(), action.points());
             case FINISH -> session.finish();
+            case SET_TEAM -> {
+                if (action.teamA() == null) throw new IllegalArgumentException("teamA requis pour SET_TEAM");
+                session.setTeamPlaying(action.teamA());
+            }
         }
 
         return GameStateDTO.from(session);

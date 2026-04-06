@@ -126,4 +126,9 @@ public class GameSession extends BaseEntity {
     public void switchTeam() {
         this.teamAPlaying = !this.teamAPlaying;
     }
+
+    // Définit explicitement l'équipe qui joue (SET_TEAM action)
+    public void setTeamPlaying(boolean teamA) {
+        this.teamAPlaying = teamA;
+    }
 }
