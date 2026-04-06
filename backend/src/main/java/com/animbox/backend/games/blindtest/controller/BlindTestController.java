@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -161,7 +162,7 @@ public class BlindTestController {
 
         GameSession session = sessionRepository.save(new GameSession(gameSet, host, "", ""));
 
-        List<String> names = req.teamNames().subList(0, Math.min(req.teamNames().size(), 6));
+        List<String> names = req.teamNames();
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i).isBlank() ? "Équipe " + (i + 1) : names.get(i).trim();
             teamRepository.save(new BlindTestTeam(session, name, i));
@@ -175,6 +176,7 @@ public class BlindTestController {
                 .body(BlindTestSessionDTO.from(session, teams));
     }
 
+    @Transactional
     @DeleteMapping("/sessions/{id}")
     public ResponseEntity<Void> deleteSession(
             @PathVariable Long id,

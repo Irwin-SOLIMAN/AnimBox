@@ -13,8 +13,12 @@ export default function BlindTestGameSetsPage() {
   const [expandedSetId, setExpandedSetId] = useState<number | null>(null)
   const [tracksMap, setTracksMap] = useState<Record<number, BlindTestTrackDTO[]>>({})
   const [newSetName, setNewSetName] = useState('')
+  const [newSetNameError, setNewSetNameError] = useState(false)
   const [loadingTracks, setLoadingTracks] = useState<number | null>(null)
   const [tab, setTab] = useState<'playlists' | 'sessions'>('playlists')
+  const [deleteSessionError, setDeleteSessionError] = useState('')
+  const [deletingSessionId, setDeletingSessionId] = useState<number | null>(null)
+  const [deleteSetConfirmId, setDeleteSetConfirmId] = useState<number | null>(null)
 
   // Session launch state
   const [launchSetId, setLaunchSetId] = useState<number | null>(null)
@@ -53,7 +57,11 @@ export default function BlindTestGameSetsPage() {
   }
 
   const createSet = async () => {
-    if (!newSetName.trim()) return
+    if (!newSetName.trim()) {
+      setNewSetNameError(true)
+      setTimeout(() => setNewSetNameError(false), 2000)
+      return
+    }
     const s = await blindTestService.createSet(newSetName.trim())
     setSets((prev) => [...prev, s])
     setTracksMap((prev) => ({ ...prev, [s.id]: [] }))
@@ -115,7 +123,7 @@ export default function BlindTestGameSetsPage() {
   }
 
   const addTeam = () => {
-    if (teamNames.length < 20) setTeamNames((p) => [...p, `Équipe ${p.length + 1}`])
+    setTeamNames((p) => [...p, `Équipe ${p.length + 1}`])
   }
 
   const removeTeam = (i: number) => {
@@ -134,8 +142,28 @@ export default function BlindTestGameSetsPage() {
   }
 
   const deleteSession = async (id: number) => {
-    await blindTestService.deleteSession(id)
-    setSessions((prev) => prev.filter((s) => s.id !== id))
+    setDeletingSessionId(id)
+    setDeleteSessionError('')
+    try {
+      await blindTestService.deleteSession(id)
+      setSessions((prev) => prev.filter((s) => s.id !== id))
+    } catch {
+      setDeleteSessionError('Impossible de supprimer la session. Réessaie.')
+    } finally {
+      setDeletingSessionId(null)
+    }
+  }
+
+  const deleteSet = async (id: number) => {
+    try {
+      await blindTestService.deleteSet(id)
+      setSets((prev) => prev.filter((s) => s.id !== id))
+      if (expandedSetId === id) setExpandedSetId(null)
+    } catch {
+      setDeleteSessionError('Impossible de supprimer la playlist.')
+    } finally {
+      setDeleteSetConfirmId(null)
+    }
   }
 
   return (
@@ -166,21 +194,28 @@ export default function BlindTestGameSetsPage() {
         {tab === 'playlists' && (
           <>
             {/* Créer playlist */}
-            <div className="mb-5 flex gap-2">
-              <input
-                value={newSetName}
-                onChange={(e) => setNewSetName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && createSet()}
-                placeholder="Nom de la nouvelle playlist..."
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 focus:border-yellow-400/50 focus:outline-none"
-              />
-              <button
-                onClick={createSet}
-                className="rounded-xl px-5 py-2 text-sm font-black text-[#0a1628]"
-                style={{ background: 'linear-gradient(180deg,#fdd876 0%,#f4b942 50%,#c4922e 100%)' }}
-              >
-                + Créer
-              </button>
+            <div className="mb-5">
+              <div className="flex gap-2">
+                <input
+                  value={newSetName}
+                  onChange={(e) => { setNewSetName(e.target.value); setNewSetNameError(false) }}
+                  onKeyDown={(e) => e.key === 'Enter' && createSet()}
+                  placeholder="Nom de la nouvelle playlist..."
+                  className={`flex-1 rounded-xl border bg-white/5 px-4 py-2 text-sm text-white placeholder-white/30 focus:outline-none transition ${
+                    newSetNameError ? 'border-red-400/60 placeholder-red-400/60' : 'border-white/10 focus:border-yellow-400/50'
+                  }`}
+                />
+                <button
+                  onClick={createSet}
+                  className="rounded-xl px-5 py-2 text-sm font-black text-[#0a1628]"
+                  style={{ background: 'linear-gradient(180deg,#fdd876 0%,#f4b942 50%,#c4922e 100%)' }}
+                >
+                  + Créer
+                </button>
+              </div>
+              {newSetNameError && (
+                <p className="mt-1 text-xs text-red-400">Renseigne d'abord un nom pour la playlist.</p>
+              )}
             </div>
 
             {/* Liste accordion */}
@@ -194,23 +229,50 @@ export default function BlindTestGameSetsPage() {
                 return (
                   <div key={set.id} id={`set-${set.id}`} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
                     {/* Header */}
-                    <button
-                      onClick={() => toggleSet(set)}
-                      className="flex w-full items-center justify-between px-5 py-4 text-left"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`text-sm transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
-                        <span className="font-semibold text-white">{set.name}</span>
-                        {set.isPublic && (
-                          <span className="rounded-full bg-yellow-400/20 px-2 py-0.5 text-xs text-yellow-300">
-                            Preset
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-white/30">
-                        {tracksMap[set.id] ? `${tracksMap[set.id].length} pistes` : ''}
-                      </span>
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => toggleSet(set)}
+                        className="flex flex-1 items-center justify-between px-5 py-4 text-left"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm transition-transform ${isOpen ? 'rotate-90' : ''}`}>▶</span>
+                          <span className="font-semibold text-white">{set.name}</span>
+                          {set.isPublic && (
+                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/40">
+                              Défaut
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs text-white/30">
+                          {tracksMap[set.id] ? `${tracksMap[set.id].length} pistes` : ''}
+                        </span>
+                      </button>
+                      {!set.isPublic && deleteSetConfirmId !== set.id && (
+                        <button
+                          onClick={() => setDeleteSetConfirmId(set.id)}
+                          className="mr-3 shrink-0 rounded-lg border border-red-500/20 px-2 py-1 text-xs text-red-400/50 hover:bg-red-900/20 hover:text-red-300 transition"
+                        >
+                          Supprimer
+                        </button>
+                      )}
+                      {deleteSetConfirmId === set.id && (
+                        <div className="mr-3 flex items-center gap-1">
+                          <span className="text-xs text-white/40">Confirmer ?</span>
+                          <button
+                            onClick={() => deleteSet(set.id)}
+                            className="rounded-lg bg-red-600/80 px-2 py-1 text-xs font-bold text-white hover:bg-red-500"
+                          >
+                            Oui
+                          </button>
+                          <button
+                            onClick={() => setDeleteSetConfirmId(null)}
+                            className="rounded-lg border border-white/10 px-2 py-1 text-xs text-white/40 hover:text-white"
+                          >
+                            Non
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     {/* Contenu accordéon */}
                     {isOpen && (
@@ -232,15 +294,13 @@ export default function BlindTestGameSetsPage() {
                             {isLaunching && (
                               <div className="mb-4 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-4">
                                 <div className="mb-3 flex items-center justify-between">
-                                  <p className="text-sm font-bold text-yellow-300">Équipes (2+)</p>
-                                  {teamNames.length < 6 && (
-                                    <button
-                                      onClick={addTeam}
-                                      className="text-xs font-bold text-yellow-300 hover:text-yellow-200"
-                                    >
-                                      + Ajouter une équipe
-                                    </button>
-                                  )}
+                                  <p className="text-sm font-bold text-yellow-300">Équipes ({teamNames.length})</p>
+                                  <button
+                                    onClick={addTeam}
+                                    className="text-xs font-bold text-yellow-300 hover:text-yellow-200"
+                                  >
+                                    + Ajouter
+                                  </button>
                                 </div>
                                 <div className="mb-3 flex flex-col gap-2">
                                   {teamNames.map((name, i) => (
@@ -349,6 +409,11 @@ export default function BlindTestGameSetsPage() {
         {/* ── SESSIONS TAB ── */}
         {tab === 'sessions' && (
           <div className="flex flex-col gap-3">
+            {deleteSessionError && (
+              <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+                {deleteSessionError}
+              </p>
+            )}
             {sessions.length === 0 && (
               <p className="text-center text-sm text-white/30">Aucune session en cours.</p>
             )}
@@ -363,9 +428,10 @@ export default function BlindTestGameSetsPage() {
                   </div>
                   <button
                     onClick={() => deleteSession(s.id)}
-                    className="text-xs text-white/30 hover:text-red-400"
+                    disabled={deletingSessionId === s.id}
+                    className="rounded-lg border border-red-500/20 px-2.5 py-1 text-xs font-semibold text-red-400/60 hover:bg-red-900/20 hover:text-red-300 disabled:opacity-40 transition"
                   >
-                    Supprimer
+                    {deletingSessionId === s.id ? '...' : 'Supprimer'}
                   </button>
                 </div>
                 <div className="mb-4 flex flex-wrap gap-2">
