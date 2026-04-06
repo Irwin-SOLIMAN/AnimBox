@@ -154,39 +154,42 @@ const FamilyFeudQuestionsPage = () => {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-6 md:p-10" style={{ background: 'radial-gradient(ellipse at 50% 0%, #0f1a3d 0%, #070B14 70%)' }}>
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex items-start justify-between gap-4">
         <div>
           <button
             onClick={() => navigate('/games')}
-            className="mb-1 text-sm text-brand-primary hover:underline"
+            className="mb-2 text-sm text-white/30 hover:text-[#f4b942] transition-colors"
           >
             ← Mes jeux
           </button>
-          <h1 className="text-3xl font-bold text-white">Une Famille en Or — Questions</h1>
+          <h1 className="text-2xl font-black text-white">Une Famille en Or</h1>
+          <p className="text-sm text-white/30">Banque de questions</p>
         </div>
         {!formOpen && (
-          <Button onClick={openCreate}>+ Nouvelle question</Button>
+          <Button onClick={openCreate} className="shrink-0">+ Nouvelle question</Button>
         )}
       </div>
 
       {/* Feedback */}
       {successMsg && (
-        <div className="mb-4 rounded-lg bg-brand-primary px-4 py-3 text-white">{successMsg}</div>
+        <div className="mb-5 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm font-semibold text-green-400">
+          {successMsg}
+        </div>
       )}
 
       {/* Formulaire create / edit */}
       {formOpen && (
         <form
           onSubmit={handleSubmit}
-          className="mb-8 rounded-2xl bg-white p-6 shadow-md"
+          className="mb-8 rounded-2xl border border-white/8 bg-white/5 p-6"
         >
-          <h2 className="mb-4 text-lg font-bold text-brand-darkest">
+          <h2 className="mb-5 text-lg font-black text-white">
             {editingId ? 'Modifier la question' : 'Nouvelle question'}
           </h2>
 
-          <div className="mb-4 grid gap-4 sm:grid-cols-2">
+          <div className="mb-5 grid gap-4 sm:grid-cols-2">
             <Input
               label="Question"
               value={formText}
@@ -201,13 +204,13 @@ const FamilyFeudQuestionsPage = () => {
           </div>
 
           {/* Réponses */}
-          <p className="mb-2 text-sm font-medium text-brand-darkest">
-            Réponses ({formAnswers.length}/{MAX_ANSWERS}) — classées du plus au moins fréquent
+          <p className="mb-3 text-xs font-bold uppercase tracking-wider text-white/30">
+            Réponses ({formAnswers.length}/{MAX_ANSWERS}) — du plus au moins fréquent
           </p>
           <div className="mb-3 flex flex-col gap-2">
             {formAnswers.map((answer, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="w-6 text-center text-sm font-bold text-brand-primary">
+                <span className="w-6 shrink-0 text-center text-sm font-bold text-[#f4b942]">
                   {i + 1}
                 </span>
                 <input
@@ -216,22 +219,22 @@ const FamilyFeudQuestionsPage = () => {
                   value={answer.text}
                   onChange={(e) => updateAnswer(i, 'text', e.target.value)}
                   required
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50"
                 />
                 <input
                   type="number"
-                  placeholder="Points"
+                  placeholder="Pts"
                   value={answer.score}
                   onChange={(e) => updateAnswer(i, 'score', e.target.value)}
                   required
                   min={1}
-                  className="w-24 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  className="w-20 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/50"
                 />
                 <button
                   type="button"
                   onClick={() => removeAnswer(i)}
                   disabled={formAnswers.length <= MIN_ANSWERS}
-                  className="text-gray-400 hover:text-red-500 disabled:opacity-30"
+                  className="text-white/20 hover:text-red-400 transition disabled:opacity-20"
                 >
                   ✕
                 </button>
@@ -243,13 +246,13 @@ const FamilyFeudQuestionsPage = () => {
             <button
               type="button"
               onClick={addAnswer}
-              className="mb-4 text-sm text-brand-primary hover:underline"
+              className="mb-5 text-sm text-[#f4b942]/60 hover:text-[#f4b942] transition"
             >
               + Ajouter une réponse
             </button>
           )}
 
-          {formError && <p className="mb-3 text-sm text-red-500">{formError}</p>}
+          {formError && <p className="mb-3 text-sm text-red-400">{formError}</p>}
 
           <div className="flex gap-3">
             <Button type="button" variant="ghost" onClick={closeForm}>
@@ -263,38 +266,43 @@ const FamilyFeudQuestionsPage = () => {
       )}
 
       {/* Liste des questions */}
-      {loading && <p className="text-brand-light">Chargement...</p>}
-      {error && <p className="text-red-400">{error}</p>}
+      {loading && <p className="text-white/30">Chargement...</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
 
       {!loading && questions.length === 0 && (
-        <p className="text-brand-light opacity-60">
-          Aucune question pour l'instant. Crée-en une !
-        </p>
+        <div className="rounded-2xl border border-dashed border-white/10 p-10 text-center">
+          <p className="text-white/20">Aucune question pour l'instant.</p>
+          <button onClick={openCreate} className="mt-2 text-sm text-[#f4b942] hover:underline">
+            Créer la première question →
+          </button>
+        </div>
       )}
 
       <div className="flex flex-col gap-4">
         {questions.map((q) => (
-          <div key={q.id} className="rounded-2xl bg-white p-5 shadow-md">
+          <div key={q.id} className="rounded-2xl border border-white/8 bg-white/5 p-5">
             <div className="mb-3 flex items-start justify-between gap-4">
               <div>
-                <p className="font-semibold text-brand-darkest">{q.text}</p>
+                <p className="font-bold text-white">{q.text}</p>
                 {q.category && (
-                  <span className="mt-1 inline-block rounded-full bg-brand-light px-2 py-0.5 text-xs text-brand-dark">
+                  <span className="mt-1.5 inline-block rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs text-white/40">
                     {q.category}
                   </span>
                 )}
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button variant="secondary" className="px-3 py-1 text-sm" onClick={() => openEdit(q)}>
+                <button
+                  onClick={() => openEdit(q)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/60 hover:bg-white/10 transition"
+                >
                   Modifier
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="px-3 py-1 text-sm text-red-500 hover:bg-red-50"
+                </button>
+                <button
                   onClick={() => setDeleteId(q.id)}
+                  className="rounded-xl border border-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-400/60 hover:bg-red-900/20 transition"
                 >
                   Supprimer
-                </Button>
+                </button>
               </div>
             </div>
 
@@ -302,11 +310,11 @@ const FamilyFeudQuestionsPage = () => {
               {q.answers.map((a) => (
                 <div
                   key={a.id}
-                  className="flex items-center gap-1 rounded-lg bg-brand-light px-3 py-1 text-sm"
+                  className="flex items-center gap-1 rounded-lg border border-white/8 bg-white/5 px-3 py-1 text-sm"
                 >
-                  <span className="font-medium text-brand-darkest">{a.rank}.</span>
-                  <span className="text-brand-darkest">{a.text}</span>
-                  <span className="ml-1 font-bold text-brand-primary">{a.score}pts</span>
+                  <span className="font-bold text-[#f4b942]">{a.rank}.</span>
+                  <span className="text-white/70">{a.text}</span>
+                  <span className="ml-1 text-xs text-white/30">{a.score}pts</span>
                 </div>
               ))}
             </div>
@@ -314,7 +322,6 @@ const FamilyFeudQuestionsPage = () => {
         ))}
       </div>
 
-      {/* Modal de confirmation de suppression */}
       <ConfirmDialog
         isOpen={deleteId !== null}
         message="Supprimer cette question et toutes ses réponses ?"

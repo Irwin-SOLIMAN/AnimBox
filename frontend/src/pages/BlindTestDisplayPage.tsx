@@ -54,8 +54,6 @@ export default function BlindTestDisplayPage() {
     </div>
   )
 
-  const maxScore = Math.max(...state.teams.map((t) => t.score), 1)
-
   return (
     <div className="flex min-h-screen flex-col" style={{ background: BG }}>
       <audio ref={audioRef} />
@@ -63,9 +61,9 @@ export default function BlindTestDisplayPage() {
       {/* Pintes de bière — zone principale */}
       <div className="flex flex-1 items-end justify-center gap-6 px-8 pt-8 pb-4">
         {state.teams.map((team) => {
-          const fillPct = state.status === 'FINISHED'
-            ? (team.score / maxScore) * 90
-            : (team.score / maxScore) * 75
+          const fillPct = state.totalTracks > 0
+            ? Math.min((team.score / state.totalTracks) * 100, 100)
+            : 0
           const isRaised = team.id === state.raisedTeamId
 
           return (
@@ -77,7 +75,7 @@ export default function BlindTestDisplayPage() {
               {!isRaised && <div className="h-10" />}
 
               {/* Pinte de bière */}
-              <BeerGlass fillPct={fillPct} isHighlighted={isRaised} />
+              <BeerGlass fillPct={fillPct} isHighlighted={isRaised} teamId={team.id} />
 
               {/* Nom de l'équipe */}
               <p className={`text-center text-lg font-black transition-colors
@@ -158,31 +156,30 @@ export default function BlindTestDisplayPage() {
 
 // ── Beer glass SVG ────────────────────────────────────────────────────────────
 
-function BeerGlass({ fillPct, isHighlighted }: { fillPct: number; isHighlighted: boolean }) {
+function BeerGlass({ fillPct, isHighlighted, teamId }: { fillPct: number; isHighlighted: boolean; teamId: number }) {
   const clampedFill = Math.max(0, Math.min(100, fillPct))
+  const uid = `t${teamId}`
   const glowStyle = isHighlighted
     ? { filter: 'drop-shadow(0 0 16px rgba(244,185,66,0.7))' }
     : {}
 
   return (
-    <div style={{ ...glowStyle, width: '100%', maxWidth: 90 }}>
+    <div style={{ ...glowStyle, width: '100%', maxWidth: 90, margin: '0 auto' }}>
       <svg viewBox="0 0 80 140" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%' }}>
-        {/* Définitions */}
         <defs>
-          <clipPath id={`glass-clip-${isHighlighted}`}>
-            {/* Forme intérieure du verre (légèrement inclinée en haut) */}
+          <clipPath id={`glass-clip-${uid}`}>
             <polygon points="10,10 70,10 65,130 15,130" />
           </clipPath>
-          <linearGradient id="beer-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <linearGradient id={`beer-grad-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#b8720a" />
             <stop offset="40%" stopColor="#f59e0b" />
             <stop offset="100%" stopColor="#d97706" />
           </linearGradient>
-          <linearGradient id="foam-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+          <linearGradient id={`foam-grad-${uid}`} x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="#fefce8" />
             <stop offset="100%" stopColor="#fde68a" />
           </linearGradient>
-          <linearGradient id="glass-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <linearGradient id={`glass-grad-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="rgba(255,255,255,0.15)" />
             <stop offset="30%" stopColor="rgba(255,255,255,0.05)" />
             <stop offset="70%" stopColor="rgba(255,255,255,0.05)" />
@@ -198,24 +195,21 @@ function BeerGlass({ fillPct, isHighlighted }: { fillPct: number; isHighlighted:
           strokeWidth="2"
         />
 
-        {/* Remplissage bière (clipé dans la forme du verre) */}
-        <g clipPath={`url(#glass-clip-${isHighlighted})`}>
-          {/* Bière */}
+        {/* Remplissage bière */}
+        <g clipPath={`url(#glass-clip-${uid})`}>
           <rect
             x="0" y={130 - (clampedFill / 100) * 120} width="80" height={clampedFill / 100 * 120}
-            fill="url(#beer-grad)"
+            fill={`url(#beer-grad-${uid})`}
             style={{ transition: 'y 1.2s cubic-bezier(0.34,1.56,0.64,1), height 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}
           />
-          {/* Mousse */}
           {clampedFill > 3 && (
             <rect
               x="0" y={130 - (clampedFill / 100) * 120 - 14} width="80" height="16"
-              fill="url(#foam-grad)"
+              fill={`url(#foam-grad-${uid})`}
               rx="4"
               style={{ transition: 'y 1.2s cubic-bezier(0.34,1.56,0.64,1)' }}
             />
           )}
-          {/* Bulles */}
           {clampedFill > 10 && [25, 40, 55].map((x, i) => (
             <circle
               key={i}
@@ -225,19 +219,10 @@ function BeerGlass({ fillPct, isHighlighted }: { fillPct: number; isHighlighted:
           ))}
         </g>
 
-        {/* Reflet verre par-dessus */}
+        {/* Reflet verre */}
         <polygon
           points="10,10 70,10 65,130 15,130"
-          fill="url(#glass-grad)"
-        />
-
-        {/* Anse */}
-        <path
-          d="M 68,40 Q 88,40 88,65 Q 88,90 68,90"
-          fill="none"
-          stroke={isHighlighted ? '#f4b942' : 'rgba(255,255,255,0.2)'}
-          strokeWidth="5"
-          strokeLinecap="round"
+          fill={`url(#glass-grad-${uid})`}
         />
       </svg>
     </div>

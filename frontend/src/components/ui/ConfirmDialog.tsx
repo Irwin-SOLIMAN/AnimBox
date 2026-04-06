@@ -18,16 +18,16 @@ const ConfirmDialog = ({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-        <p className="mb-6 text-center text-brand-darkest">{message}</p>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-white/8 bg-[#0d1526] p-6 shadow-2xl">
+        <p className="mb-6 text-center text-white/80">{message}</p>
         <div className="flex gap-3">
           <Button variant="ghost" className="flex-1" onClick={onCancel}>
             Annuler
           </Button>
           <Button
-            variant="primary"
-            className="flex-1 bg-red-500 hover:bg-red-600"
+            variant="danger"
+            className="flex-1"
             onClick={onConfirm}
           >
             {confirmLabel}

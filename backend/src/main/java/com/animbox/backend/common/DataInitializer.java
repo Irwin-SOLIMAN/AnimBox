@@ -65,7 +65,7 @@ public class DataInitializer implements ApplicationRunner {
                 "BLIND_TEST",
                 "Blind Test",
                 "Devinez la chanson avant tout le monde !",
-                2
+                6
         );
 
         if (blindTestTrackRepository.count() == 0) {

@@ -10,17 +10,17 @@ const Input = ({ label, error, id, className = '', ...props }: InputProps) => {
 
   return (
     <div>
-      <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-brand-darkest">
+      <label htmlFor={inputId} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/50">
         {label}
       </label>
       <input
         id={inputId}
-        className={`w-full rounded-lg border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary ${
-          error ? 'border-red-400' : 'border-gray-300'
+        className={`w-full rounded-xl border bg-white/5 px-4 py-2.5 text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-[#f4b942]/60 transition ${
+          error ? 'border-red-500/60' : 'border-white/10 hover:border-white/20'
         } ${className}`}
         {...props}
       />
-      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
     </div>
   )
 }

@@ -1,12 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-darkest: #17252A;
-  --color-brand-dark: #2B7A78;
-  --color-brand-primary: #3AAFA9;
-  --color-brand-light: #DEF2F1;
+  /* Thème global dark */
+  --color-brand-bg:      #070B14;
+  --color-brand-surface: rgba(255,255,255,0.05);
+  --color-brand-border:  rgba(255,255,255,0.08);
+  --color-brand-primary: #f4b942;
+  --color-brand-dark:    #c4922e;
+  --color-brand-light:   #fdd876;
+  --color-brand-darkest: #070B14;
 
-  /* Thème Famille en Or */
+  /* Thème Famille en Or (inchangé) */
   --color-ff-bg:         #080f22;
   --color-ff-card:       #101e42;
   --color-ff-card-mid:   #162550;
@@ -16,10 +20,11 @@
 }
 
 body {
-  background-color: var(--color-brand-darkest);
+  background-color: var(--color-brand-bg);
+  color: white;
 }
 
-/* Lueur dorée pour les éléments actifs FF */
+/* Lueur dorée pour les éléments actifs */
 .ff-glow {
   box-shadow: 0 0 18px 2px rgba(244, 185, 66, 0.35);
 }
@@ -32,4 +37,11 @@ body {
 }
 .ff-answer-reveal {
   animation: ff-reveal 0.6s ease-out forwards;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
 }
