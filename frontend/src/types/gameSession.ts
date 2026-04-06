@@ -11,6 +11,7 @@ export type ActionType =
   | 'END_ROUND'
   | 'SET_TEAM'
   | 'SET_MULTIPLIER'
+  | 'TOGGLE_SCORES'
 
 export interface ActionDTO {
   type: ActionType
@@ -40,6 +41,7 @@ export interface GameStateDTO {
   stealPhase: boolean
   roundPoints: number
   roundMultiplier: number
+  hideScores: boolean
 }
 
 export interface GameSessionResponse {

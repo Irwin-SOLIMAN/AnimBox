@@ -35,6 +35,19 @@ body {
   50%       { opacity: 0.65; }
 }
 
+/* Confetti qui tombent sur l'écran de victoire */
+@keyframes ff-confetti-fall {
+  0%   { transform: translateY(-30px) rotate(0deg) scaleX(1);   opacity: 1; }
+  70%  { opacity: 0.9; }
+  100% { transform: translateY(105vh) rotate(540deg) scaleX(-1); opacity: 0; }
+}
+
+/* Trophée qui flotte */
+@keyframes ff-trophy-float {
+  from { transform: translateY(0)     scale(1);    }
+  to   { transform: translateY(-18px) scale(1.08); }
+}
+
 /* Flash d'apparition d'une réponse révélée */
 @keyframes ff-reveal {
   0%   { transform: scale(1.06); background-color: #f4b942; color: #0a1628; }

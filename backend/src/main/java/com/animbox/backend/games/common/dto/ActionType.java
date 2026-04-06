@@ -24,6 +24,7 @@ public enum ActionType {
     ADJUST_SCORE,   // Blind Test : ajustement direct des points — payload: teamId + points (peut être négatif)
 
     // Actions spécifiques Famille en Or — choix d'équipe et multiplicateur
-    SET_TEAM,       // choisir l'équipe qui commence — payload: teamA (true = équipe A)
-    SET_MULTIPLIER  // multiplicateur de la manche — payload: points (1, 2 ou 3)
+    SET_TEAM,        // choisir l'équipe qui commence — payload: teamA (true = équipe A)
+    SET_MULTIPLIER,  // multiplicateur de la manche — payload: points (1, 2 ou 3)
+    TOGGLE_SCORES    // bascule l'affichage des scores sur le display (suspens)
 }

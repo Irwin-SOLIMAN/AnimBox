@@ -107,6 +107,7 @@ public class GameSessionService {
                 if (action.teamA() == null) throw new IllegalArgumentException("teamA requis pour SET_TEAM");
                 session.setTeamPlaying(action.teamA());
             }
+            case TOGGLE_SCORES -> session.toggleHideScores();
         }
 
         return GameStateDTO.from(session);

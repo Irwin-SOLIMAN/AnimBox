@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { gameSessionService } from '../services/gameSessionService'
 import type { GameStateDTO } from '../types/gameSession'
@@ -60,6 +60,10 @@ const DisplayPage = () => {
     )
   }
 
+  if (state.status === 'FINISHED') {
+    return <VictoryScreen state={state} />
+  }
+
   const { currentQuestion, revealedAnswerIds } = state
   const revealedSet = new Set(revealedAnswerIds)
   const answers = currentQuestion?.answers ?? []
@@ -92,10 +96,10 @@ const DisplayPage = () => {
               }`}
           >
             <p className="text-xs uppercase tracking-[0.25em] text-white/50">{team.name}</p>
-            <p className={`text-5xl tabular-nums font-black leading-tight ${
+            <p className={`text-5xl tabular-nums font-black leading-tight transition-all duration-300 ${
               team.playing && state.status === 'IN_PROGRESS' ? 'text-ff-gold' : 'text-white/80'
             }`}>
-              {team.score}
+              {state.hideScores ? '?' : team.score}
             </p>
           </div>
         ))}
@@ -205,26 +209,101 @@ const DisplayPage = () => {
         </>
       )}
 
-      {/* ── Fin de partie ── */}
-      {state.status === 'FINISHED' && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          <p className="text-5xl font-black text-ff-gold drop-shadow-lg">🏆 Partie terminée !</p>
-          <p className="text-3xl text-white">
-            {state.teamAScore > state.teamBScore
-              ? `${state.teamAName} gagne !`
-              : state.teamBScore > state.teamAScore
-                ? `${state.teamBName} gagne !`
-                : '🤝 Égalité !'}
-          </p>
-        </div>
-      )}
-
       {/* ── Attente ── */}
       {state.status === 'WAITING' && (
         <div className="flex flex-1 items-center justify-center">
           <p className="text-2xl text-white/30">La partie va bientôt commencer...</p>
         </div>
       )}
+    </div>
+  )
+}
+
+function VictoryScreen({ state }: { state: GameStateDTO }) {
+  const isTeamAWinner = state.teamAScore > state.teamBScore
+  const isTie = state.teamAScore === state.teamBScore
+  const winnerName = isTie ? null : isTeamAWinner ? state.teamAName : state.teamBName
+
+  const pieces = useMemo(() =>
+    Array.from({ length: 80 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      delay: Math.random() * 5,
+      duration: 3.5 + Math.random() * 2.5,
+      color: ['#f4b942', '#fdd876', '#c4922e', '#ffffff', '#ff9800', '#ff5252', '#a78bfa'][i % 7],
+      width: 7 + Math.random() * 9,
+      height: 5 + Math.random() * 7,
+      isCircle: i % 3 === 0,
+    })), [])
+
+  return (
+    <div
+      className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden select-none"
+      style={{ background: FF_BG }}
+    >
+      {/* Confetti */}
+      {pieces.map((p) => (
+        <div
+          key={p.id}
+          className="absolute pointer-events-none"
+          style={{
+            left: `${p.left}%`,
+            top: '-30px',
+            width: `${p.width}px`,
+            height: `${p.height}px`,
+            backgroundColor: p.color,
+            borderRadius: p.isCircle ? '50%' : '2px',
+            animation: `ff-confetti-fall ${p.duration}s ${p.delay}s linear infinite`,
+          }}
+        />
+      ))}
+
+      {/* Contenu centré */}
+      <div className="relative z-10 flex flex-col items-center gap-8 text-center px-12">
+
+        {/* Trophée / emoji animé */}
+        <div style={{ fontSize: '110px', lineHeight: 1, animation: 'ff-trophy-float 1.8s ease-in-out infinite alternate' }}>
+          {isTie ? '🤝' : '🏆'}
+        </div>
+
+        {/* Vainqueur */}
+        {winnerName ? (
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-sm font-bold uppercase tracking-[0.5em] text-white/40">
+              Vainqueur
+            </p>
+            <p
+              className="text-7xl font-black text-ff-gold"
+              style={{ textShadow: '0 0 50px rgba(244,185,66,0.75), 0 0 20px rgba(244,185,66,0.4), 0 3px 0 rgba(0,0,0,0.5)' }}
+            >
+              {winnerName}
+            </p>
+          </div>
+        ) : (
+          <p className="text-5xl font-black text-white">Égalité !</p>
+        )}
+
+        {/* Scores des 2 équipes */}
+        <div className="flex gap-8">
+          {[
+            { name: state.teamAName, score: state.teamAScore, won: !isTie && isTeamAWinner },
+            { name: state.teamBName, score: state.teamBScore, won: !isTie && !isTeamAWinner },
+          ].map((team, i) => (
+            <div
+              key={i}
+              className={`rounded-2xl border-2 px-12 py-5 text-center transition-all
+                ${team.won ? 'border-ff-gold bg-ff-gold/10 ff-glow' : 'border-white/10 bg-ff-card'}`}
+            >
+              <p className="text-sm uppercase tracking-[0.25em] text-white/40">{team.name}</p>
+              <p className={`text-6xl font-black tabular-nums ${team.won ? 'text-ff-gold' : 'text-white/50'}`}>
+                {team.score}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-sm text-white/20 uppercase tracking-widest">Partie terminée</p>
+      </div>
     </div>
   )
 }

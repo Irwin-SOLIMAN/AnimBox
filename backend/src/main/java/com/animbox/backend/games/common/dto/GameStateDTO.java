@@ -29,7 +29,8 @@ public record GameStateDTO(
         boolean teamAPlaying,
         boolean stealPhase,
         int roundPoints,      // total des points révélés sur la question en cours (non multiplié)
-        int roundMultiplier   // multiplicateur de la manche (1, 2 ou 3)
+        int roundMultiplier,  // multiplicateur de la manche (1, 2 ou 3)
+        boolean hideScores    // suspens : masque les scores sur le display public
 ) {
 
     public record QuestionDTO(
@@ -82,7 +83,8 @@ public record GameStateDTO(
                 session.isTeamAPlaying(),
                 session.isStealPhase(),
                 roundPoints,
-                session.getRoundMultiplier()
+                session.getRoundMultiplier(),
+                session.isHideScores()
         );
     }
 }

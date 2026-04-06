@@ -75,6 +75,10 @@ public class GameSession extends BaseEntity {
     @Column(nullable = false)
     private int roundMultiplier = 1;
 
+    // Suspens : masque les scores sur le display public
+    @Column(nullable = false)
+    private boolean hideScores = false;
+
     @Column(unique = true, nullable = false, updatable = false)
     private String token;
 
@@ -130,6 +134,11 @@ public class GameSession extends BaseEntity {
     // Définit le multiplicateur de la manche (1, 2 ou 3)
     public void setMultiplier(int multiplier) {
         this.roundMultiplier = Math.max(1, Math.min(3, multiplier));
+    }
+
+    // Bascule l'affichage des scores sur le display public
+    public void toggleHideScores() {
+        this.hideScores = !this.hideScores;
     }
 
     // Change l'équipe qui joue (face-off, alternance inter-questions)

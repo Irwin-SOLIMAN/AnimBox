@@ -102,10 +102,25 @@ const ControlPanelPage = () => {
         <span className="text-sm font-medium text-white/60">
           Question {state.currentQuestionIndex + 1} / {state.totalQuestions}
         </span>
-        <span
-          className={`h-2.5 w-2.5 rounded-full transition-colors ${isConnected ? 'bg-ff-gold' : 'bg-red-400'}`}
-          title={isConnected ? 'Connecté' : 'Déconnecté'}
-        />
+        <div className="flex items-center gap-2">
+          {state.status === 'IN_PROGRESS' && isCommander && (
+            <button
+              onClick={() => dispatch({ type: 'TOGGLE_SCORES' })}
+              title={state.hideScores ? 'Afficher les scores' : 'Masquer les scores (suspens)'}
+              className={`rounded-lg border px-2 py-1 text-base transition-all
+                ${state.hideScores
+                  ? 'border-ff-gold/60 bg-ff-gold/15 text-ff-gold'
+                  : 'border-white/10 text-white/30 hover:text-white/60'
+                }`}
+            >
+              {state.hideScores ? '🙈' : '👁'}
+            </button>
+          )}
+          <span
+            className={`h-2.5 w-2.5 rounded-full transition-colors ${isConnected ? 'bg-ff-gold' : 'bg-red-400'}`}
+            title={isConnected ? 'Connecté' : 'Déconnecté'}
+          />
+        </div>
       </div>
 
       {/* Scores + choix équipe qui joue */}
